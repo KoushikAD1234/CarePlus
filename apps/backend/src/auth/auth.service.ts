@@ -8,8 +8,8 @@ import { Repository } from 'typeorm';
 import { Doctor } from 'src/database/entities/doctor.entity';
 import bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { SignupDto } from './dto/signup.dto';
-import { LoginDto } from './dto/login.dto';
+import { SignupDto } from '../dto/signup.dto';
+import { LoginDto } from '../dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -71,8 +71,11 @@ export class AuthService {
 
     const token = this.jwtService.sign({
       userId: user.id,
-      clinicId: user.clinic_id,
+      email: user.email,
+      clinic_id: user.clinic_id,
     });
+
+    console.log('Value of clinic id', user.clinic_id);
 
     return {
       access_token: token,

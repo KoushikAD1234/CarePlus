@@ -5,7 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Doctor } from 'src/database/entities/doctor.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtStrategy } from 'src/common/guards/jwt/jwt.guard.spec';
+import { JwtStrategy } from 'src/modules/auth/jwt.strategy';
 
 @Module({
   imports: [
