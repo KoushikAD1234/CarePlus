@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Appointment } from 'src/database/entities/appointment.entity';
 import { CreateAppointmentDto } from 'src/dto/create-appointment.dto';
@@ -17,8 +17,11 @@ export class AppointmentService {
       clinic_id,
       appointment_time: new Date(body.appointment_time),
     });
-
-    return this.appointmentRepo.save(appointment);
+    try {
+      return await this.appointmentRepo.save(appointment);
+    } catch (error) {
+      throw new BadRequestException('Slot already booked');
+    }
   }
 
   async findAll(clinic_id: string) {

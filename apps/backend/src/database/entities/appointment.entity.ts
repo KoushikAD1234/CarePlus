@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, Unique } from 'typeorm';
 
 export enum AppointmentStatus {
   BOOKED = 'BOOKED',
@@ -7,6 +7,7 @@ export enum AppointmentStatus {
 }
 
 @Entity()
+@Unique(['doctor_id', 'appointment_time'])
 export class Appointment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
