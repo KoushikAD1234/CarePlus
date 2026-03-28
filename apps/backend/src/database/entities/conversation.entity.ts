@@ -3,6 +3,9 @@ import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 export enum ConversationStep {
   START = 'START',
   ASK_NAME = 'ASK_NAME',
+  ASK_GENDER = 'ASK_GENDER',
+  ASK_DATE = 'ASK_DATE',
+  ASK_AGE = 'ASK_AGE',
   ASK_DOCTOR = 'ASK_DOCTOR',
   ASK_TIME = 'ASK_TIME',
   CONFIRM = 'CONFIRM',
@@ -16,6 +19,9 @@ export class Conversation {
   @Column()
   phone: string;
 
+  @Column({ nullable: true })
+  age: number;
+
   @Column({
     type: 'enum',
     enum: ConversationStep,
@@ -27,8 +33,14 @@ export class Conversation {
   name: string;
 
   @Column({ nullable: true })
+  gender: string;
+
+  @Column({ nullable: true })
   doctor_id: string;
 
   @Column({ nullable: true })
   appointment_time: string;
+
+  @Column({ nullable: true })
+  appointment_date: string;
 }
