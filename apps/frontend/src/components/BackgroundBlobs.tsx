@@ -4,15 +4,15 @@ export default function BackgroundBlobs() {
   return (
     <div className="absolute inset-0 -z-10 overflow-hidden">
       <motion.div
-        className="w-[400px] h-[400px] bg-purple-400 rounded-full blur-3xl opacity-30 absolute top-[-100px] left-[-100px]"
-        animate={{ x: [0, 100, 0], y: [0, 50, 0] }}
-        transition={{ repeat: Infinity, duration: 12 }}
+        className="w-[500px] h-[500px] bg-blue-500/20 rounded-full blur-3xl absolute top-[-150px] left-[-150px]"
+        animate={{ x: [0, 120, 0], y: [0, 80, 0] }}
+        transition={{ duration: 20, repeat: Infinity }}
       />
 
       <motion.div
-        className="w-[300px] h-[300px] bg-blue-400 rounded-full blur-3xl opacity-30 absolute bottom-[-100px] right-[-100px]"
-        animate={{ x: [0, -80, 0], y: [0, -40, 0] }}
-        transition={{ repeat: Infinity, duration: 10 }}
+        className="w-[400px] h-[400px] bg-indigo-500/20 rounded-full blur-3xl absolute bottom-[-150px] right-[-150px]"
+        animate={{ x: [0, -100, 0], y: [0, -60, 0] }}
+        transition={{ duration: 18, repeat: Infinity }}
       />
     </div>
   );

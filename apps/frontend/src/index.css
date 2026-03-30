@@ -1,11 +1,16 @@
 @import "tailwindcss";
 
-/* Light theme (default) */
-body {
-  @apply bg-gray-50 text-gray-900 transition-colors duration-300;
+/* DARK SYSTEM ONLY */
+html {
+  background: #0B1220;
 }
 
-/* Dark theme */
-.dark body {
-  @apply bg-gray-900 text-gray-100;
+body {
+  @apply text-gray-100 antialiased;
+  background: radial-gradient(circle at top, #0f172a, #020617);
+}
+
+/* Smooth selection */
+::selection {
+  @apply bg-blue-500 text-white;
 }
