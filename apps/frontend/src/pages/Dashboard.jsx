@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Users, Calendar, IndianRupee, Zap, ArrowUpRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const AnalyticsCard = ({ title, value, icon: Icon, trend, color, delay }) => (
   <motion.div
@@ -32,7 +33,7 @@ const AnalyticsCard = ({ title, value, icon: Icon, trend, color, delay }) => (
 export default function DashboardHome() {
   const stats = [
     {
-      title: "Total Patients",
+      title: "Today's Total Patients",
       value: "1,284",
       icon: Users,
       trend: "+12%",
@@ -46,7 +47,7 @@ export default function DashboardHome() {
       color: { bg: "bg-purple-500", text: "text-purple-600" },
     },
     {
-      title: "Revenue (MTD)",
+      title: "Revenue (Today)",
       value: "₹42.5k",
       icon: IndianRupee,
       trend: "+18%",
@@ -110,9 +111,12 @@ export default function DashboardHome() {
           <p className="text-blue-100 text-sm mb-8 leading-relaxed font-medium">
             Unlock advanced WhatsApp automations and detailed financial reports.
           </p>
-          <button className="w-full py-4 bg-white text-blue-600 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-50 transition-colors">
+          <Link
+            to="upgrade"
+            className="w-full py-4 px-10 cursor-pointer bg-white text-blue-600 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-50 transition-colors"
+          >
             View Plans
-          </button>
+          </Link>
         </div>
       </div>
     </div>

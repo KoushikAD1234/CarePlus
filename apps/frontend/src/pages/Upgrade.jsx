@@ -135,9 +135,9 @@ export default function Upgrade() {
       {/* Pricing Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center px-4">
         <PricingCard
-          title="Free Trial"
-          price="0"
-          description="Perfect for testing with up to 50 patients."
+          title="Basic Membership"
+          price="799"
+          description="Perfect for testing with up to 50 patients/month."
           icon={Rocket}
           features={[
             "WhatsApp Bot Basic",
@@ -150,13 +150,14 @@ export default function Upgrade() {
 
         <PricingCard
           popular
-          title="Professional"
-          price="2,499"
+          title="Plus Membership"
+          price="1,399"
           description="Unlimited automation for busy clinics."
           icon={Crown}
           features={[
+            "All Basic Membership Features",
             "Unlimited WhatsApp Slots",
-            "Automated Reminders",
+            "Smart Whatsapp Booking",
             "Revenue Analytics",
             "Priority Support",
             "Custom Bot Training",
@@ -165,16 +166,17 @@ export default function Upgrade() {
         />
 
         <PricingCard
-          title="Enterprise"
-          price="5,999"
-          description="Multi-doctor support and API access."
+          title="Pro Membership"
+          price="1,799"
+          description="AI-enabled support and API access."
           icon={ShieldCheck}
           features={[
-            "Multi-Doctor Dashboard",
-            "White-labeled Bot",
-            "EMR Integration",
-            "Dedicated Manager",
-            "Advanced Reporting",
+            "All Plus Membership Features",
+            "Smart Whatsapp Booking",
+            "Manage Booking via Agentic AI",
+            "AI enabled receptionist",
+            "Custom Dashboard and Requirements",
+            "Priority Support",
           ]}
           delay={0.3}
         />
