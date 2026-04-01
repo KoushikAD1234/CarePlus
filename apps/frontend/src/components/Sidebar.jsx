@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   CalendarCheck,
@@ -40,6 +40,12 @@ const SidebarItem = ({ icon: Icon, label, path, active }) => (
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleSignOut = () => {
+    localStorage.removeItem("access_token");
+    navigate("/");
+  }
 
   // Primary Navigation Links
   const menuItems = [
@@ -107,9 +113,7 @@ export default function Sidebar() {
       {/* Logout / User Profile Section */}
       <div className="pt-6 border-t border-gray-100 dark:border-white/5">
         <button
-          onClick={() => {
-            /* Add your logout logic here */
-          }}
+          onClick={handleSignOut}
           className="w-full flex items-center gap-4 px-6 py-4 text-gray-400 hover:text-red-500 transition-colors group"
         >
           <LogOut

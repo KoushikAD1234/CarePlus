@@ -1,8 +1,47 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { loginUser, registerUser } from '../apiHandler/authApiHandler/authSlice';
+import { useNavigate } from "react-router-dom";
 
 export default function AuthModal({ isOpen, onClose }) {
   const [isLogin, setIsLogin] = useState(true);
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+  });
+
+  const dispatch = useDispatch();
+  const { loading, error, access_token } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if(isLogin) {
+      dispatch(loginUser({
+        email: form.email,
+        password: form.password,
+      }));
+    } else {
+      dispatch(registerUser(form));
+    }
+  };
+
+  useEffect(() => {
+    if (access_token && isOpen) {
+      onClose();
+      navigate("/dashboard", { replace: true });
+    }
+  }, [access_token, isOpen, navigate, onClose]);
 
   return (
     <AnimatePresence>
@@ -42,22 +81,28 @@ export default function AuthModal({ isOpen, onClose }) {
                 </p>
               </div>
 
-              <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+              <form className="space-y-4" onSubmit={handleSubmit}>
                 {!isLogin && (
                   <input
+                    name="name"
                     type="text"
                     placeholder="Full Name"
+                    onChange={handleChange}
                     className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-white/5 outline-none focus:border-blue-500 transition-all dark:text-white"
                   />
                 )}
                 <input
+                  name="email"
                   type="email"
                   placeholder="Email Address"
+                  onChange={handleChange}
                   className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-white/5 outline-none focus:border-blue-500 transition-all dark:text-white"
                 />
                 <input
+                  name="password"
                   type="password"
                   placeholder="Password"
+                  onChange={handleChange}
                   className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-white/5 outline-none focus:border-blue-500 transition-all dark:text-white"
                 />
 
@@ -66,8 +111,18 @@ export default function AuthModal({ isOpen, onClose }) {
                   whileTap={{ scale: 0.98 }}
                   className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-600/20 mt-4"
                 >
-                  {isLogin ? "Sign In" : "Register Now"}
+                  {loading
+                    ? "Please wait..."
+                    : isLogin
+                    ? "Sign In"
+                    : "Register Now"}
                 </motion.button>
+
+                {error && (
+                  <p className="text-red-500 text-sm text-center mt-2">
+                    {error}
+                  </p>
+                )}
               </form>
 
               <div className="mt-8 text-center">
