@@ -3,7 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { validationSchema } from './config/validation.schema';
 import { TypeOrmModule } from '@nestjs/typeorm'; // allows your NestJS application to talk to your SQL database
 import { Doctor } from './database/entities/doctor.entity';
-import { AuthModule } from './auth/auth.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { Patient } from './database/entities/patient.entity';
 import { PatientModule } from './modules/patient/patient.module';
 import { AppointmentModule } from './modules/appointment/appointment.module';

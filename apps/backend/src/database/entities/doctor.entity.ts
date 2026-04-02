@@ -16,4 +16,10 @@ export class Doctor {
 
   @Column()
   password?: string;
+
+  @Column({ type: 'text', nullable: true })
+  reset_token!: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  reset_token_expiry!: Date | null;
 }
