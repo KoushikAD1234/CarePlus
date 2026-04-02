@@ -1,20 +1,29 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useRef } from "react"; // Added useRef
+import { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   loginUser,
   registerUser,
 } from "../apiHandler/authApiHandler/authSlice";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, Loader2, X, ShieldCheck, ArrowRight } from "lucide-react";
+import {
+  CheckCircle,
+  Loader2,
+  X,
+  ShieldCheck,
+  ArrowRight,
+  ArrowLeft,
+  Mail,
+} from "lucide-react";
 
 export default function AuthModal({ isOpen, onClose }) {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false); // New State
   const [isSuccess, setIsSuccess] = useState(false);
   const [regSuccess, setRegSuccess] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [resetSent, setResetSent] = useState(false); // Success state for reset email
 
-  // Track if the user actually clicked 'Register' to avoid ghost triggers
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
   const wasRegistrationAttempted = useRef(false);
 
   const dispatch = useDispatch();
@@ -27,16 +36,28 @@ export default function AuthModal({ isOpen, onClose }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (isLogin) {
+    if (isForgotPassword) {
+      handleForgotPassword();
+    } else if (isLogin) {
       dispatch(loginUser({ email: form.email, password: form.password }));
     } else {
-      wasRegistrationAttempted.current = true; // Mark that we are trying to register
+      wasRegistrationAttempted.current = true;
       dispatch(registerUser(form));
     }
   };
 
+  const handleForgotPassword = async () => {
+    // Logic for calling your NestJS /auth/forgot-password endpoint
+    console.log("Sending reset email to:", form.email);
+    setResetSent(true);
+    setTimeout(() => {
+      setResetSent(false);
+      setIsForgotPassword(false);
+      setIsLogin(true);
+    }, 3000);
+  };
+
   useEffect(() => {
-    // 1. LOGIN SUCCESS LOGIC
     if (access_token && isOpen && isLogin) {
       setIsSuccess(true);
       const timer = setTimeout(() => {
@@ -47,22 +68,17 @@ export default function AuthModal({ isOpen, onClose }) {
       return () => clearTimeout(timer);
     }
 
-    // 2. REGISTRATION SUCCESS LOGIC
-    // Trigger only if: not loading, no error, we are in register mode, and we actually clicked register
     if (!isLogin && !loading && !error && wasRegistrationAttempted.current) {
-      wasRegistrationAttempted.current = false; // Reset the ref immediately
+      wasRegistrationAttempted.current = false;
       setRegSuccess(true);
-
       const timer = setTimeout(() => {
         setRegSuccess(false);
-        setIsLogin(true); // Switch to Login UI
-        setForm({ name: "", email: "", password: "" }); // Clear form
+        setIsLogin(true);
+        setForm({ name: "", email: "", password: "" });
       }, 2500);
-
       return () => clearTimeout(timer);
     }
 
-    // Reset attempt if an error occurs so it can be tried again
     if (error) {
       wasRegistrationAttempted.current = false;
     }
@@ -72,7 +88,6 @@ export default function AuthModal({ isOpen, onClose }) {
     <AnimatePresence mode="wait">
       {isOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
-          {/* Backdrop Blur */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -81,7 +96,6 @@ export default function AuthModal({ isOpen, onClose }) {
             className="absolute inset-0 bg-gray-950/60 backdrop-blur-md"
           />
 
-          {/* Modal Card */}
           <motion.div
             layout
             className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-[3rem] shadow-2xl border border-gray-200 dark:border-white/5 overflow-hidden z-20"
@@ -105,31 +119,36 @@ export default function AuthModal({ isOpen, onClose }) {
                     Securing Session...
                   </p>
                 </motion.div>
-              ) : /* VIEW 2: REGISTRATION SUCCESS */
-              regSuccess ? (
+              ) : /* VIEW 2: REGISTRATION SUCCESS / RESET SUCCESS */
+              regSuccess || resetSent ? (
                 <motion.div
-                  key="reg-success"
+                  key="action-success"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
                   className="p-12 text-center flex flex-col items-center justify-center min-h-[450px]"
                 >
-                  <div className="w-24 h-24 bg-green-500 rounded-[2.5rem] flex items-center justify-center text-white mb-6 shadow-2xl shadow-green-500/40">
-                    <CheckCircle size={48} strokeWidth={3} />
+                  <div
+                    className={`w-24 h-24 ${
+                      resetSent ? "bg-amber-500" : "bg-green-500"
+                    } rounded-[2.5rem] flex items-center justify-center text-white mb-6 shadow-2xl shadow-opacity-40`}
+                  >
+                    {resetSent ? (
+                      <Mail size={48} />
+                    ) : (
+                      <CheckCircle size={48} strokeWidth={3} />
+                    )}
                   </div>
-                  <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">
-                    Account Created!
+                  <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">
+                    {resetSent ? "Check Your Email" : "Account Created!"}
                   </h2>
                   <p className="text-gray-500 font-medium mt-2">
-                    Please sign in with your credentials.
+                    {resetSent
+                      ? "We've sent a recovery link to your inbox."
+                      : "Please sign in with your credentials."}
                   </p>
-                  <div className="mt-8 flex items-center justify-center gap-2 text-blue-600 font-black text-[10px] uppercase tracking-widest">
-                    Switching to Login{" "}
-                    <ArrowRight size={14} className="animate-bounce-x" />
-                  </div>
                 </motion.div>
               ) : (
-                /* VIEW 3: THE FORM */
+                /* VIEW 3: THE FORM (LOGIN / REGISTER / FORGOT) */
                 <motion.div
                   key="form"
                   className="p-10"
@@ -154,25 +173,29 @@ export default function AuthModal({ isOpen, onClose }) {
                     <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
                       Medi<span className="text-blue-600">Care</span>
                     </h2>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mt-2">
+                      {isForgotPassword
+                        ? "Password Recovery"
+                        : isLogin
+                        ? "Provider Login"
+                        : "New Registration"}
+                    </p>
                   </div>
 
                   <form className="space-y-4" onSubmit={handleSubmit}>
-                    <AnimatePresence mode="popLayout">
-                      {!isLogin && (
-                        <motion.input
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          name="name"
-                          type="text"
-                          placeholder="Dr. Full Name"
-                          required
-                          value={form.name}
-                          onChange={handleChange}
-                          className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none transition-all dark:text-white font-medium shadow-inner"
-                        />
-                      )}
-                    </AnimatePresence>
+                    {!isLogin && !isForgotPassword && (
+                      <motion.input
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        name="name"
+                        type="text"
+                        placeholder="Dr. Full Name"
+                        required
+                        value={form.name}
+                        onChange={handleChange}
+                        className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none transition-all dark:text-white font-medium shadow-inner"
+                      />
+                    )}
 
                     <input
                       name="email"
@@ -183,53 +206,69 @@ export default function AuthModal({ isOpen, onClose }) {
                       onChange={handleChange}
                       className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none transition-all dark:text-white font-medium shadow-inner"
                     />
-                    <input
-                      name="password"
-                      type="password"
-                      placeholder="Password"
-                      required
-                      value={form.password}
-                      onChange={handleChange}
-                      className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none transition-all dark:text-white font-medium shadow-inner"
-                    />
+
+                    {!isForgotPassword && (
+                      <input
+                        name="password"
+                        type="password"
+                        placeholder="Password"
+                        required
+                        value={form.password}
+                        onChange={handleChange}
+                        className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none transition-all dark:text-white font-medium shadow-inner"
+                      />
+                    )}
+
+                    {isLogin && !isForgotPassword && (
+                      <div className="text-right px-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsForgotPassword(true)}
+                          className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-blue-600 transition-colors"
+                        >
+                          Forgot Password?
+                        </button>
+                      </div>
+                    )}
 
                     <motion.button
                       disabled={loading}
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
-                      className="w-full bg-blue-600 text-white font-black text-xs uppercase tracking-widest py-5 rounded-2xl shadow-xl shadow-blue-600/30 mt-6 flex items-center justify-center gap-3 disabled:bg-gray-400"
+                      className="w-full bg-blue-600 text-white font-black text-xs uppercase tracking-widest py-5 rounded-2xl shadow-xl shadow-blue-600/30 mt-6 flex items-center justify-center gap-3"
                     >
                       {loading ? (
                         <Loader2 className="animate-spin" size={18} />
+                      ) : isForgotPassword ? (
+                        "Send Recovery Link"
                       ) : isLogin ? (
                         "Enter Dashboard"
                       ) : (
                         "Register Account"
                       )}
                     </motion.button>
-
-                    {error && (
-                      <motion.p
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="text-red-500 text-[10px] font-bold text-center uppercase tracking-widest mt-4 bg-red-500/10 py-2 rounded-lg border border-red-500/20"
-                      >
-                        {typeof error === "object" ? error.message : error}
-                      </motion.p>
-                    )}
                   </form>
 
                   <div className="mt-10 text-center">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-                      {isLogin ? "No account?" : "Already a member?"}
+                    {isForgotPassword ? (
                       <button
-                        type="button"
-                        onClick={() => setIsLogin(!isLogin)}
-                        className="text-blue-600 font-black hover:underline ml-2 transition-all"
+                        onClick={() => setIsForgotPassword(false)}
+                        className="flex items-center justify-center gap-2 w-full text-xs font-black text-gray-400 hover:text-blue-600 uppercase tracking-widest transition-all"
                       >
-                        {isLogin ? "Create One" : "Login"}
+                        <ArrowLeft size={14} /> Back to Login
                       </button>
-                    </p>
+                    ) : (
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                        {isLogin ? "No account?" : "Already a member?"}
+                        <button
+                          type="button"
+                          onClick={() => setIsLogin(!isLogin)}
+                          className="text-blue-600 font-black hover:underline ml-2"
+                        >
+                          {isLogin ? "Create One" : "Login"}
+                        </button>
+                      </p>
+                    )}
                   </div>
                 </motion.div>
               )}

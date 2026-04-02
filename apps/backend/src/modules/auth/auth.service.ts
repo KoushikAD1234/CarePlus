@@ -12,8 +12,7 @@ import { SignupDto } from '../../dto/signup.dto';
 import { LoginDto } from '../../dto/login.dto';
 import { ForgotPasswordDto } from 'src/dto/forgot-password.dto';
 import { ResetPasswordDto } from 'src/dto/reset-passwprd.dto';
-import * as crypto from 'crypto';
-
+import { randomBytes } from 'crypto';
 @Injectable()
 export class AuthService {
   constructor(
@@ -91,21 +90,19 @@ export class AuthService {
       where: { email: body.email },
     });
 
-    if (!doctor) {
-      return { message: 'If email exists, reset link sent' };
+    if (doctor) {
+      const token = randomBytes(32).toString('hex');
+
+      doctor.reset_token = token;
+      doctor.reset_token_expiry = new Date(Date.now() + 10 * 60 * 1000);
+
+      await this.doctorRepo.save(doctor);
+
+      const resetLink = `http://localhost:5173/?token=${token}`;
+      console.log('RESET LINK:', resetLink);
     }
 
-    const token = crypto.randomBytes(32).toString('hex');
-
-    doctor.reset_token = token;
-    doctor.reset_token_expiry = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
-
-    await this.doctorRepo.save(doctor);
-
-    return {
-      message: 'Reset token generated',
-      token, // later send via email
-    };
+    return { message: 'If email exists, reset link sent' };
   }
 
   // RESET PASSWORD
