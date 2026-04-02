@@ -60,65 +60,72 @@ export const resetPassword = createAsyncThunk(
 )
 
 const authSlice = createSlice({
-    name: 'auth',
-    initialState: {
-        user: null,
-        access_token: localStorage.getItem('access_token') || null,
-        loading: false,
-        error: null,
-        message: null,
+  name: "auth",
+  initialState: {
+    user: null,
+    access_token: localStorage.getItem("access_token") || null,
+    loading: false,
+    error: null,
+    message: null,
+    registrationSuccess: false,
+  },
+  reducers: {
+    logout: (state) => {
+      state.user = null;
+      state.access_token = null;
+      state.error = null;
+      state.loading = false;
+      localStorage.removeItem("access_token");
     },
-    reducers: {
-        logout: (state) => {
-            state.user = null;
-            state.access_token = null;
-            localStorage.removeItem('access_token');
-        },
+    resetRegStatus: (state) => {
+      state.registrationSuccess = false;
     },
-    extraReducers: (builder) => {
-        builder
+  },
+  extraReducers: (builder) => {
+    builder
 
-            // REGISTER
-            .addCase(registerUser.pending, (state) => {
-                state.loading = true;
-            })
-            .addCase(registerUser.fulfilled, (state) => {
-                state.loading = false;
-                state.message = "Registration successful";
-            })
-            .addCase(registerUser.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload;
-            })
+      // REGISTER
+      .addCase(registerUser.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(registerUser.fulfilled, (state) => {
+        state.loading = false;
+        state.registrationSuccess = true;
+        state.message = "Registration successful";
+        state.error = null;
+      })
+      .addCase(registerUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
 
-            // LOGIN
-            .addCase(loginUser.pending, (state) => {
-                state.loading = true;
-            })
-            .addCase(loginUser.fulfilled, (state, action) => {
-                state.loading = false;
-                state.user = action.payload.user;
-                state.access_token = action.payload.access_token;
-                state.message = "Registration successful";
+      // LOGIN
+      .addCase(loginUser.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(loginUser.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.user;
+        state.access_token = action.payload.access_token;
+        state.message = "Registration successful";
 
-                localStorage.setItem('access_token', action.payload.access_token);
-            })
-            .addCase(loginUser.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload;
-            })
+        localStorage.setItem("access_token", action.payload.access_token);
+      })
+      .addCase(loginUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
 
-            //FORGOT PASSWORD
-            .addCase(forgotPassword.fulfilled, (state, action) => {
-                state.message = action.payload.message;
-            })
+      //FORGOT PASSWORD
+      .addCase(forgotPassword.fulfilled, (state, action) => {
+        state.message = action.payload.message;
+      })
 
-            //RESET PASSWORD
-            .addCase(resetPassword.fulfilled, (state, action) => {
-                state.message = action.payload.message;
-            })
-
-    },
+      //RESET PASSWORD
+      .addCase(resetPassword.fulfilled, (state, action) => {
+        state.message = action.payload.message;
+      });
+  },
 });
 
 export const { logout, clearMessage } = authSlice.actions;
