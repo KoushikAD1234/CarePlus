@@ -2,8 +2,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
+  forgotPassword,
   loginUser,
   registerUser,
+  resetPassword,
 } from "../apiHandler/authApiHandler/authSlice";
 import { useNavigate } from "react-router-dom";
 import {
@@ -14,18 +16,26 @@ import {
   ArrowRight,
   ArrowLeft,
   Mail,
+  KeyRound,
 } from "lucide-react";
 
 export default function AuthModal({ isOpen, onClose }) {
   const [isLogin, setIsLogin] = useState(true);
-  const [isForgotPassword, setIsForgotPassword] = useState(false); // New State
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [resetStep, setResetStep] = useState(1); // Track Step 1 (OTP) vs Step 2 (Reset)
   const [isSuccess, setIsSuccess] = useState(false);
   const [regSuccess, setRegSuccess] = useState(false);
-  const [resetSent, setResetSent] = useState(false); // Success state for reset email
+  const [resetSent, setResetSent] = useState(false);
 
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    otp: "",
+    newPassword: "",
+  });
+
   const wasRegistrationAttempted = useRef(false);
-
   const dispatch = useDispatch();
   const { loading, error, access_token } = useSelector((state) => state.auth);
   const navigate = useNavigate();
@@ -37,7 +47,11 @@ export default function AuthModal({ isOpen, onClose }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (isForgotPassword) {
-      handleForgotPassword();
+      if (resetStep === 1) {
+        handleSendOTP();
+      } else {
+        handleResetPassword();
+      }
     } else if (isLogin) {
       dispatch(loginUser({ email: form.email, password: form.password }));
     } else {
@@ -46,15 +60,33 @@ export default function AuthModal({ isOpen, onClose }) {
     }
   };
 
-  const handleForgotPassword = async () => {
-    // Logic for calling your NestJS /auth/forgot-password endpoint
-    console.log("Sending reset email to:", form.email);
+  // STEP 1: Request OTP
+  const handleSendOTP = async () => {
+    console.log("Requesting OTP for:", form.email);
+    dispatch(forgotPassword(form.email));
+    setResetStep(2); // Move to OTP/New Password step
+  };
+
+  const handleResetPassword = async () => {
+    console.log("Resetting password with OTP:", form.otp);
+    console.log("Resetting password with OTP:", form.email);
+
+    dispatch(resetPassword({ email: form.email, otp: form.otp, newPassword: form.newPassword}))
+
     setResetSent(true);
     setTimeout(() => {
       setResetSent(false);
       setIsForgotPassword(false);
+      setResetStep(1);
       setIsLogin(true);
+      setForm({ ...form, otp: "", newPassword: "" });
     }, 3000);
+  };
+
+  // Helper to reset forgot password state when toggling
+  const toggleForgotPassword = (val) => {
+    setIsForgotPassword(val);
+    setResetStep(1);
   };
 
   useEffect(() => {
@@ -74,13 +106,15 @@ export default function AuthModal({ isOpen, onClose }) {
       const timer = setTimeout(() => {
         setRegSuccess(false);
         setIsLogin(true);
-        setForm({ name: "", email: "", password: "" });
+        setForm({
+          name: "",
+          email: "",
+          password: "",
+          otp: "",
+          newPassword: "",
+        });
       }, 2500);
       return () => clearTimeout(timer);
-    }
-
-    if (error) {
-      wasRegistrationAttempted.current = false;
     }
   }, [access_token, loading, error, isOpen, navigate, onClose, isLogin]);
 
@@ -101,12 +135,9 @@ export default function AuthModal({ isOpen, onClose }) {
             className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-[3rem] shadow-2xl border border-gray-200 dark:border-white/5 overflow-hidden z-20"
           >
             <AnimatePresence mode="wait">
-              {/* VIEW 1: LOGIN SUCCESS */}
               {isSuccess ? (
                 <motion.div
                   key="login-success"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
                   className="p-12 text-center flex flex-col items-center justify-center min-h-[450px]"
                 >
                   <div className="w-24 h-24 bg-blue-600 rounded-[2.5rem] flex items-center justify-center text-white mb-6 shadow-2xl shadow-blue-600/40">
@@ -119,12 +150,9 @@ export default function AuthModal({ isOpen, onClose }) {
                     Securing Session...
                   </p>
                 </motion.div>
-              ) : /* VIEW 2: REGISTRATION SUCCESS / RESET SUCCESS */
-              regSuccess || resetSent ? (
+              ) : regSuccess || resetSent ? (
                 <motion.div
                   key="action-success"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
                   className="p-12 text-center flex flex-col items-center justify-center min-h-[450px]"
                 >
                   <div
@@ -133,22 +161,21 @@ export default function AuthModal({ isOpen, onClose }) {
                     } rounded-[2.5rem] flex items-center justify-center text-white mb-6 shadow-2xl shadow-opacity-40`}
                   >
                     {resetSent ? (
-                      <Mail size={48} />
+                      <KeyRound size={48} />
                     ) : (
                       <CheckCircle size={48} strokeWidth={3} />
                     )}
                   </div>
                   <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">
-                    {resetSent ? "Check Your Email" : "Account Created!"}
+                    {resetSent ? "Password Reset!" : "Account Created!"}
                   </h2>
-                  <p className="text-gray-500 font-medium mt-2">
+                  <p className="text-gray-500 font-medium mt-2 text-sm">
                     {resetSent
-                      ? "We've sent a recovery link to your inbox."
+                      ? "Your password has been updated successfully."
                       : "Please sign in with your credentials."}
                   </p>
                 </motion.div>
               ) : (
-                /* VIEW 3: THE FORM (LOGIN / REGISTER / FORGOT) */
                 <motion.div
                   key="form"
                   className="p-10"
@@ -158,7 +185,7 @@ export default function AuthModal({ isOpen, onClose }) {
                 >
                   <button
                     onClick={onClose}
-                    className="absolute top-8 right-8 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                    className="absolute top-8 right-8 text-gray-400 hover:text-gray-900 dark:hover:text-white"
                   >
                     <X size={20} />
                   </button>
@@ -175,7 +202,7 @@ export default function AuthModal({ isOpen, onClose }) {
                     </h2>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mt-2">
                       {isForgotPassword
-                        ? "Password Recovery"
+                        ? `Reset Password: Step ${resetStep}`
                         : isLogin
                         ? "Provider Login"
                         : "New Registration"}
@@ -183,30 +210,33 @@ export default function AuthModal({ isOpen, onClose }) {
                   </div>
 
                   <form className="space-y-4" onSubmit={handleSubmit}>
+                    {/* REGISTER ONLY */}
                     {!isLogin && !isForgotPassword && (
-                      <motion.input
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
+                      <input
                         name="name"
                         type="text"
                         placeholder="Dr. Full Name"
                         required
                         value={form.name}
                         onChange={handleChange}
-                        className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none transition-all dark:text-white font-medium shadow-inner"
+                        className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium"
                       />
                     )}
 
-                    <input
-                      name="email"
-                      type="email"
-                      placeholder="Email Address"
-                      required
-                      value={form.email}
-                      onChange={handleChange}
-                      className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none transition-all dark:text-white font-medium shadow-inner"
-                    />
+                    {/* EMAIL: Visible in Login, Register, and Step 1 of Forgot Password */}
+                    {(!isForgotPassword || resetStep === 1) && (
+                      <input
+                        name="email"
+                        type="email"
+                        placeholder="Email Address"
+                        required
+                        value={form.email}
+                        onChange={handleChange}
+                        className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium shadow-inner"
+                      />
+                    )}
 
+                    {/* LOGIN / REGISTER PASSWORD */}
                     {!isForgotPassword && (
                       <input
                         name="password"
@@ -215,16 +245,46 @@ export default function AuthModal({ isOpen, onClose }) {
                         required
                         value={form.password}
                         onChange={handleChange}
-                        className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none transition-all dark:text-white font-medium shadow-inner"
+                        className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium"
                       />
+                    )}
+
+                    {/* FORGOT PASSWORD STEP 2: OTP & NEW PASSWORD */}
+                    {isForgotPassword && resetStep === 2 && (
+                      <>
+                        <motion.input
+                          initial={{ x: 20, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          name="otp"
+                          type="text"
+                          placeholder="Enter 6-Digit OTP"
+                          required
+                          value={form.otp}
+                          onChange={handleChange}
+                          className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium"
+                        />
+
+                        <motion.input
+                          initial={{ x: 20, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ delay: 0.1 }}
+                          name="newPassword"
+                          type="password"
+                          placeholder="New Password"
+                          required
+                          value={form.newPassword}
+                          onChange={handleChange}
+                          className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium"
+                        />
+                      </>
                     )}
 
                     {isLogin && !isForgotPassword && (
                       <div className="text-right px-2">
                         <button
                           type="button"
-                          onClick={() => setIsForgotPassword(true)}
-                          className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-blue-600 transition-colors"
+                          onClick={() => toggleForgotPassword(true)}
+                          className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-blue-600"
                         >
                           Forgot Password?
                         </button>
@@ -240,7 +300,11 @@ export default function AuthModal({ isOpen, onClose }) {
                       {loading ? (
                         <Loader2 className="animate-spin" size={18} />
                       ) : isForgotPassword ? (
-                        "Send Recovery Link"
+                        resetStep === 1 ? (
+                          "Send OTP"
+                        ) : (
+                          "Reset Password"
+                        )
                       ) : isLogin ? (
                         "Enter Dashboard"
                       ) : (
@@ -250,25 +314,17 @@ export default function AuthModal({ isOpen, onClose }) {
                   </form>
 
                   <div className="mt-10 text-center">
-                    {isForgotPassword ? (
-                      <button
-                        onClick={() => setIsForgotPassword(false)}
-                        className="flex items-center justify-center gap-2 w-full text-xs font-black text-gray-400 hover:text-blue-600 uppercase tracking-widest transition-all"
-                      >
-                        <ArrowLeft size={14} /> Back to Login
-                      </button>
-                    ) : (
-                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-                        {isLogin ? "No account?" : "Already a member?"}
-                        <button
-                          type="button"
-                          onClick={() => setIsLogin(!isLogin)}
-                          className="text-blue-600 font-black hover:underline ml-2"
-                        >
-                          {isLogin ? "Create One" : "Login"}
-                        </button>
-                      </p>
-                    )}
+                    <button
+                      onClick={() => {
+                        if (isForgotPassword && resetStep === 2)
+                          setResetStep(1);
+                        else toggleForgotPassword(false);
+                      }}
+                      className="flex items-center justify-center gap-2 w-full text-xs font-black text-gray-400 hover:text-blue-600 uppercase tracking-widest transition-all"
+                    >
+                      <ArrowLeft size={14} /> Back to{" "}
+                      {isForgotPassword && resetStep === 2 ? "Step 1" : "Login"}
+                    </button>
                   </div>
                 </motion.div>
               )}

@@ -12,13 +12,15 @@ import { SignupDto } from '../../dto/signup.dto';
 import { LoginDto } from '../../dto/login.dto';
 import { ForgotPasswordDto } from 'src/dto/forgot-password.dto';
 import { ResetPasswordDto } from 'src/dto/reset-passwprd.dto';
-import { randomBytes } from 'crypto';
+import { randomInt } from 'crypto';
+import { MailService } from '../mail/mail.service';
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(Doctor) // Tells Nest which database table tool to deliver.
     private doctorRepo: Repository<Doctor>,
     private jwtService: JwtService,
+    private mailService: MailService,
   ) {}
 
   async hashPassword(password: string): Promise<string> {
@@ -91,39 +93,51 @@ export class AuthService {
     });
 
     if (doctor) {
-      const token = randomBytes(32).toString('hex');
+      const otp = randomInt(100000, 999999).toString();
 
-      doctor.reset_token = token;
-      doctor.reset_token_expiry = new Date(Date.now() + 10 * 60 * 1000);
+      // Save OTP + expiry
+      doctor.reset_otp = otp;
+      doctor.reset_otp_expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
 
       await this.doctorRepo.save(doctor);
 
-      const resetLink = `http://localhost:5173/?token=${token}`;
-      console.log('RESET LINK:', resetLink);
+      // 🔥 Send OTP email
+      await this.mailService.sendOtp(doctor.email, otp);
     }
 
-    return { message: 'If email exists, reset link sent' };
+    // 🔐 Always return same response (security)
+    return { message: 'If email exists, OTP sent' };
   }
 
   // RESET PASSWORD
   async resetPassword(body: ResetPasswordDto) {
     const doctor = await this.doctorRepo.findOne({
-      where: { reset_token: body.token },
+      where: { email: body.email },
     });
 
-    if (!doctor) {
-      throw new BadRequestException('Invalid token');
+    // ❌ No user or no OTP
+    if (!doctor || !doctor.reset_otp) {
+      throw new BadRequestException('Invalid OTP');
     }
 
-    if (!doctor.reset_token_expiry || doctor.reset_token_expiry < new Date()) {
-      throw new BadRequestException('Token expired');
+    // ⏰ Expiry check
+    if (!doctor.reset_otp_expiry || doctor.reset_otp_expiry < new Date()) {
+      throw new BadRequestException('OTP expired');
     }
 
+    // ❌ OTP mismatch
+    if (doctor.reset_otp !== body.otp) {
+      throw new BadRequestException('Incorrect OTP');
+    }
+
+    // 🔐 Hash new password
     const hashed = await bcrypt.hash(body.newPassword, 10);
 
     doctor.password = hashed;
-    doctor.reset_token = null;
-    doctor.reset_token_expiry = null;
+
+    // 🧹 Clear OTP after use
+    doctor.reset_otp = null;
+    doctor.reset_otp_expiry = null;
 
     await this.doctorRepo.save(doctor);
 

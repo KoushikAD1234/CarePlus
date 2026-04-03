@@ -2,8 +2,11 @@ import { IsString } from 'class-validator';
 
 export class ResetPasswordDto {
   @IsString()
-  token: string;
+  otp: string;
 
   @IsString()
   newPassword: string;
+
+  @IsString()
+  email: string;
 }
