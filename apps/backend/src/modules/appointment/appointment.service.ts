@@ -40,43 +40,54 @@ export class AppointmentService {
     if (query.date) {
       const now = new Date();
 
-      let start: Date;
-      let end: Date;
+      let start: Date | undefined;
+      let end: Date | undefined;
 
       if (query.date === 'today') {
-        start = new Date(now.setHours(0, 0, 0, 0));
-        end = new Date(now.setHours(23, 59, 59, 999));
+        start = new Date();
+        start.setHours(0, 0, 0, 0);
+
+        end = new Date();
+        end.setHours(23, 59, 59, 999);
       }
 
       if (query.date === 'tomorrow') {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        start = new Date(tomorrow.setHours(0, 0, 0, 0));
-        end = new Date(tomorrow.setHours(23, 59, 59, 999));
+        start = new Date(tomorrow);
+        start.setHours(0, 0, 0, 0);
+
+        end = new Date(tomorrow);
+        end.setHours(23, 59, 59, 999);
       }
 
       if (query.date === 'yesterday') {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
 
-        start = new Date(yesterday.setHours(0, 0, 0, 0));
-        end = new Date(yesterday.setHours(23, 59, 59, 999));
+        start = new Date(yesterday);
+        start.setHours(0, 0, 0, 0);
+
+        end = new Date(yesterday);
+        end.setHours(23, 59, 59, 999);
       }
 
-      where.appointment_time = Between(start!, end!);
+      if (start && end) {
+        where.appointment_time = Between(start, end);
+      }
     }
 
-    // 🔍 SEARCH
+    // 🔍 SEARCH + DATE TOGETHER
     if (query.search) {
       return this.appointmentRepo.find({
         where: [
           {
-            clinic_id,
+            ...where,
             patient_name: ILike(`%${query.search}%`),
           },
           {
-            clinic_id,
+            ...where,
             patient_phone: ILike(`%${query.search}%`),
           },
         ],
@@ -84,7 +95,8 @@ export class AppointmentService {
       });
     }
 
-    return await this.appointmentRepo.find({
+    // 🟢 DEFAULT
+    return this.appointmentRepo.find({
       where,
       order: { appointment_time: 'ASC' },
     });
