@@ -34,9 +34,13 @@ export default function Appointments() {
 
   // 1. Fetch appointments when filter or search changes
   useEffect(() => {
+    console.log("Value of active Filter ", activeFilter);
     const params = {};
     if (activeFilter === "today") params.date = "today";
+    if(activeFilter === "tomorrow") params.date = "tomorrow";
+    if(activeFilter === "yesterday") params.date = "yesterday";
     if (searchQuery) params.search = searchQuery;
+    console.log("Value of params ", params)
     dispatch(fetchAppointments(params));
   }, [dispatch, activeFilter, searchQuery]);
 
