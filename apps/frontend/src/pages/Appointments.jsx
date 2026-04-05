@@ -18,12 +18,15 @@ import {
   updateStatus,
   deleteAppointment
 } from "../apiHandler/authApiHandler/appointmentSlice";
+import PatientDetailsModal from "../components/PatientDetailsModal";
 
 export default function Appointments() {
   const [activeFilter, setActiveFilter] = useState("today");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isWalkInOpen, setIsWalkInOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const itemsPerPage = 5;
 
   const dispatch = useDispatch();
@@ -38,10 +41,10 @@ export default function Appointments() {
     console.log("Value of active Filter ", activeFilter);
     const params = {};
     if (activeFilter === "today") params.date = "today";
-    if(activeFilter === "tomorrow") params.date = "tomorrow";
-    if(activeFilter === "yesterday") params.date = "yesterday";
+    if (activeFilter === "tomorrow") params.date = "tomorrow";
+    if (activeFilter === "yesterday") params.date = "yesterday";
     if (searchQuery) params.search = searchQuery;
-    console.log("Value of params ", params)
+    console.log("Value of params ", params);
     dispatch(fetchAppointments(params));
   }, [dispatch, activeFilter, searchQuery]);
 
@@ -65,7 +68,7 @@ export default function Appointments() {
     if (window.confirm("Are you sure you want to delete this appointment?")) {
       try {
         console.log("Value of id while deleting 2", id);
-        await dispatch(deleteAppointment(id))
+        await dispatch(deleteAppointment(id));
         // The Redux slice should ideally filter out the deleted ID from 'items'
         // automatically, but if not, you can re-fetch:
         // dispatch(fetchAppointments({ date: activeFilter }));
@@ -87,6 +90,19 @@ export default function Appointments() {
     // For now, we close the modal and refresh the list
     setIsWalkInOpen(false);
     dispatch(fetchAppointments({ date: activeFilter }));
+  };
+
+  // Function to open the details
+  const handleViewPatient = (appt) => {
+    setSelectedAppointment(appt);
+    setIsDetailsOpen(true);
+  };
+
+  // Function to handle update (from modal)
+  const handleUpdateAppointment = async (updatedData) => {
+    // dispatch(updateAppointmentAction(updatedData)); // Add your update thunk here
+    // setIsDetailsOpen(false);
+    console.log("Updated data ready for API:", updatedData);
   };
 
   return (
@@ -183,7 +199,10 @@ export default function Appointments() {
                     className="hover:bg-blue-50/30 dark:hover:bg-blue-900/5 transition-colors group"
                   >
                     <td className="px-8 py-6">
-                      <div className="flex items-center gap-4">
+                      <div
+                        className="flex items-center gap-4 cursor-pointer group/name"
+                        onClick={() => handleViewPatient(appt)}
+                      >
                         <div className="w-10 h-10 rounded-xl bg-blue-600/10 text-blue-600 flex items-center justify-center font-bold text-sm">
                           {appt.patient_name.charAt(0)}
                         </div>
@@ -288,6 +307,12 @@ export default function Appointments() {
           </div>
         </div>
       </div>
+      <PatientDetailsModal
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        appointment={selectedAppointment}
+        onUpdate={handleUpdateAppointment}
+      />
       <WalkInModal
         isOpen={isWalkInOpen}
         onClose={() => setIsWalkInOpen(false)}

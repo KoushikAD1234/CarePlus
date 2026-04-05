@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, Phone, Calendar, UserCircle, Send } from "lucide-react";
+import { X, User, Phone, Calendar, UserCircle, Send, MapPin } from "lucide-react";
 import { useState } from "react";
 
 export default function WalkInModal({ isOpen, onClose, onSave }) {
@@ -8,6 +8,7 @@ export default function WalkInModal({ isOpen, onClose, onSave }) {
     phone: "",
     age: "",
     gender: "Male",
+    address: "",
     type: "Walk-in",
   });
 
@@ -20,6 +21,7 @@ export default function WalkInModal({ isOpen, onClose, onSave }) {
       phone: "",
       age: "",
       gender: "Male",
+      address: "",
       type: "Walk-in",
     }); // Reset
   };
@@ -138,6 +140,21 @@ export default function WalkInModal({ isOpen, onClose, onSave }) {
                       <option value="Other">Other</option>
                     </select>
                   </div>
+                </div>
+                <div className="relative">
+                  <MapPin
+                    className="absolute left-4 top-5 text-gray-400"
+                    size={18}
+                  />
+                  <textarea
+                    placeholder="Residential Address"
+                    rows="3"
+                    value={formData.address}
+                    onChange={(e) =>
+                      setFormData({ ...formData, address: e.target.value })
+                    }
+                    className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-transparent focus:border-blue-600/30 outline-none dark:text-white text-sm font-medium transition-all resize-none"
+                  />
                 </div>
               </div>
 
