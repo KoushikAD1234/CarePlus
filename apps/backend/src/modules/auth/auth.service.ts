@@ -101,11 +101,11 @@ export class AuthService {
 
       await this.doctorRepo.save(doctor);
 
-      // 🔥 Send OTP email
+      // Send OTP email
       await this.mailService.sendOtp(doctor.email, otp);
     }
 
-    // 🔐 Always return same response (security)
+    // Always return same response (security)
     return { message: 'If email exists, OTP sent' };
   }
 

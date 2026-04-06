@@ -214,7 +214,6 @@ export default function WalkInModal({ isOpen, onClose, onSave }) {
                   >
                     <option value="First Visit">First Visit</option>
                     <option value="Follow-up">Follow-up</option>
-                    <option value="Emergency">Emergency</option>
                   </select>
                 </div>
 
