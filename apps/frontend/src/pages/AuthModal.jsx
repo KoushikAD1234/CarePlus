@@ -13,16 +13,14 @@ import {
   Loader2,
   X,
   ShieldCheck,
-  ArrowRight,
   ArrowLeft,
-  Mail,
   KeyRound,
 } from "lucide-react";
 
 export default function AuthModal({ isOpen, onClose }) {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
-  const [resetStep, setResetStep] = useState(1); // Track Step 1 (OTP) vs Step 2 (Reset)
+  const [resetStep, setResetStep] = useState(1);
   const [isSuccess, setIsSuccess] = useState(false);
   const [regSuccess, setRegSuccess] = useState(false);
   const [resetSent, setResetSent] = useState(false);
@@ -47,11 +45,7 @@ export default function AuthModal({ isOpen, onClose }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (isForgotPassword) {
-      if (resetStep === 1) {
-        handleSendOTP();
-      } else {
-        handleResetPassword();
-      }
+      resetStep === 1 ? handleSendOTP() : handleResetPassword();
     } else if (isLogin) {
       dispatch(loginUser({ email: form.email, password: form.password }));
     } else {
@@ -60,17 +54,12 @@ export default function AuthModal({ isOpen, onClose }) {
     }
   };
 
-  // STEP 1: Request OTP
   const handleSendOTP = async () => {
-    console.log("Requesting OTP for:", form.email);
     dispatch(forgotPassword(form.email));
-    setResetStep(2); // Move to OTP/New Password step
+    setResetStep(2);
   };
 
   const handleResetPassword = async () => {
-    console.log("Resetting password with OTP:", form.otp);
-    console.log("Resetting password with OTP:", form.email);
-
     dispatch(
       resetPassword({
         email: form.email,
@@ -89,7 +78,6 @@ export default function AuthModal({ isOpen, onClose }) {
     }, 3000);
   };
 
-  // Helper to reset forgot password state when toggling
   const toggleForgotPassword = (val) => {
     setIsForgotPassword(val);
     setResetStep(1);
@@ -164,7 +152,7 @@ export default function AuthModal({ isOpen, onClose }) {
                   <div
                     className={`w-24 h-24 ${
                       resetSent ? "bg-amber-500" : "bg-green-500"
-                    } rounded-[2.5rem] flex items-center justify-center text-white mb-6 shadow-2xl shadow-opacity-40`}
+                    } rounded-[2.5rem] flex items-center justify-center text-white mb-6 shadow-2xl`}
                   >
                     {resetSent ? (
                       <KeyRound size={48} />
@@ -177,7 +165,7 @@ export default function AuthModal({ isOpen, onClose }) {
                   </h2>
                   <p className="text-gray-500 font-medium mt-2 text-sm">
                     {resetSent
-                      ? "Your password has been updated successfully."
+                      ? "Your password has been updated."
                       : "Please sign in with your credentials."}
                   </p>
                 </motion.div>
@@ -216,7 +204,6 @@ export default function AuthModal({ isOpen, onClose }) {
                   </div>
 
                   <form className="space-y-4" onSubmit={handleSubmit}>
-                    {/* REGISTER ONLY */}
                     {!isLogin && !isForgotPassword && (
                       <input
                         name="name"
@@ -229,7 +216,6 @@ export default function AuthModal({ isOpen, onClose }) {
                       />
                     )}
 
-                    {/* EMAIL: Visible in Login, Register, and Step 1 of Forgot Password */}
                     {(!isForgotPassword || resetStep === 1) && (
                       <input
                         name="email"
@@ -242,7 +228,6 @@ export default function AuthModal({ isOpen, onClose }) {
                       />
                     )}
 
-                    {/* LOGIN / REGISTER PASSWORD */}
                     {!isForgotPassword && (
                       <input
                         name="password"
@@ -255,7 +240,6 @@ export default function AuthModal({ isOpen, onClose }) {
                       />
                     )}
 
-                    {/* FORGOT PASSWORD STEP 2: OTP & NEW PASSWORD */}
                     {isForgotPassword && resetStep === 2 && (
                       <>
                         <motion.input
@@ -269,7 +253,6 @@ export default function AuthModal({ isOpen, onClose }) {
                           onChange={handleChange}
                           className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium"
                         />
-
                         <motion.input
                           initial={{ x: 20, opacity: 0 }}
                           animate={{ x: 0, opacity: 1 }}
@@ -319,18 +302,29 @@ export default function AuthModal({ isOpen, onClose }) {
                     </motion.button>
                   </form>
 
-                  <div className="mt-10 text-center">
-                    <button
-                      onClick={() => {
-                        if (isForgotPassword && resetStep === 2)
-                          setResetStep(1);
-                        else toggleForgotPassword(false);
-                      }}
-                      className="flex items-center justify-center gap-2 w-full text-xs font-black text-gray-400 hover:text-blue-600 uppercase tracking-widest transition-all"
-                    >
-                      <ArrowLeft size={14} /> Back to{" "}
-                      {isForgotPassword && resetStep === 2 ? "Step 1" : "Login"}
-                    </button>
+                  {/* --- NEW TOGGLE BUTTONS SECTION --- */}
+                  <div className="mt-8 flex flex-col gap-4 text-center">
+                    {!isForgotPassword ? (
+                      <button
+                        onClick={() => setIsLogin(!isLogin)}
+                        className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 transition-all"
+                      >
+                        {isLogin
+                          ? "Don't have an account? Create one"
+                          : "Already have an account? Sign In"}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          if (resetStep === 2) setResetStep(1);
+                          else toggleForgotPassword(false);
+                        }}
+                        className="flex items-center justify-center gap-2 w-full text-xs font-black text-gray-400 hover:text-blue-600 uppercase tracking-widest transition-all"
+                      >
+                        <ArrowLeft size={14} /> Back to{" "}
+                        {resetStep === 2 ? "Step 1" : "Login"}
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               )}
