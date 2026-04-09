@@ -12,7 +12,9 @@ export class WhatsappService {
   ) {}
 
   async handleIncoming(body: any) {
-    const { from, message } = body;
+    // const { from, message } = body;
+    const from = body.From;
+    const message = body.Body?.trim();
 
     let { convo, isNew } = await this.convoService.getOrCreate(from);
 
