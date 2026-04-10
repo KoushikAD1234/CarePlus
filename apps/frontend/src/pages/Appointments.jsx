@@ -89,8 +89,8 @@ export default function Appointments() {
       ).toISOString();
 
       const typeMap = {
-        "First Visit": "FIRST VISIT",
-        "Follow-up": "FOLLOW UP",
+        "First Visit": "FIRST_VISIT",
+        "Follow-up": "FOLLOW_UP",
       };
 
       let patientId;
