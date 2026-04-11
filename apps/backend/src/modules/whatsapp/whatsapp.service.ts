@@ -12,21 +12,24 @@ export class WhatsappService {
   ) {}
 
   async handleIncoming(body: any) {
-    // const { from, message } = body;
     const from = body.From;
-    const message = body.Body?.trim();
+    const message = body.Body?.trim() ?? '';
 
     let { convo, isNew } = await this.convoService.getOrCreate(from);
 
-    let reply;
+    // This explicit typing fixes the "not assignable" error
+    let reply: string | null = null;
 
     if (isNew) {
-      reply = "Hi! Whats's your name ?";
+      reply = "Hi! What's your name?";
     } else {
       reply = await this.handler.handle(convo, message);
     }
 
-    await this.sender.sendMessage(from, reply);
+    // Only send a message if there is string content
+    if (reply !== null) {
+      await this.sender.sendMessage(from, reply);
+    }
 
     return { success: true };
   }
