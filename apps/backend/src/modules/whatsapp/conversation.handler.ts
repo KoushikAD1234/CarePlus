@@ -129,7 +129,7 @@ export class ConversationHandler {
         convo.appointment_date = date;
         convo.step = ConversationStep.ASK_TIME;
         await this.convoService.save(convo);
-        return 'Enter time (e.g., 10:30)';
+        return 'Enter time in 24 hrs format (e.g., 10:30 or 22:20)';
       }
 
       case ConversationStep.ASK_TIME:
