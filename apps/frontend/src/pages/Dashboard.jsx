@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 import { Users, Calendar, IndianRupee, Zap, ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useSelector } from "react-redux"
+// import { authSlice } from '../apiHandler/authApiHandler/authSlice'
 
 const AnalyticsCard = ({ title, value, icon: Icon, trend, color, delay }) => (
   <motion.div
@@ -62,13 +64,16 @@ export default function DashboardHome() {
     },
   ];
 
+  const user = useSelector((state) => state.auth.user);
+
   return (
     <div className="space-y-12">
       {/* Welcome Header */}
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">
-            Welcome back, <span className="text-blue-600">Dr. Koushik</span>
+            Welcome back,{" "}
+            <span className="text-blue-600">{user?.name || "Doctor"}</span>
           </h1>
           <p className="text-gray-500 font-medium mt-2">
             Here is what's happening in your clinic today.
@@ -79,7 +84,12 @@ export default function DashboardHome() {
             Current Session
           </p>
           <p className="font-bold text-sm dark:text-white">
-            Monday, 30 March 2026
+            {new Date().toLocaleDateString("en-IN", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
           </p>
         </div>
       </div>

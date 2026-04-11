@@ -6,6 +6,7 @@ import { Doctor } from 'src/database/entities/doctor.entity';
 import { Patient } from 'src/database/entities/patient.entity';
 import { Repository } from 'typeorm';
 import { AppointmentService } from '../appointment/appointment.service';
+import { AppointmentType } from 'src/database/entities/appointment.entity';
 
 @Injectable()
 export class ConversationHandler {
@@ -106,11 +107,14 @@ export class ConversationHandler {
   }
 
   async book(convo: Conversation) {
+    console.log('📥 Booking started', convo);
+
     let patient = await this.patientRepo.findOne({
       where: { phone: convo.phone },
     });
 
     if (!patient) {
+      console.log('👤 Creating patient...');
       patient = await this.patientRepo.save({
         name: convo.name,
         phone: convo.phone,
@@ -119,21 +123,36 @@ export class ConversationHandler {
         address: convo.address,
         clinic_id: 'default-clinic',
       });
+      console.log('✅ Patient saved:', patient);
     }
 
     try {
-      await this.appointmentService.create(
+      console.log('📅 Creating appointment...');
+
+      console.log("Value of doctor id before saving into db ", convo.doctor_id);
+
+      const rawPhone = convo.phone;
+      const cleanedPhone = rawPhone.replace('whatsapp:', '');
+
+
+      const res = await this.appointmentService.create(
         {
           patient_id: patient.id,
           doctor_id: convo.doctor_id,
+          patient_name: convo.name,
+          patient_phone: cleanedPhone,
+          type: this.mapAppointmentType(convo.type),
           appointment_time: convo.appointment_time,
         },
         'default-clinic',
       );
 
+      console.log('✅ Appointment result:', res);
+
       await this.convoService.delete(convo.phone);
       return '✅ Appointment booked!';
-    } catch {
+    } catch (err) {
+      console.error('❌ Appointment error:', err);
       return '❌ Slot already booked';
     }
   }
@@ -150,5 +169,16 @@ export class ConversationHandler {
       return d.toISOString().split('T')[0];
     }
     return null;
+  }
+
+  mapAppointmentType(type: string): AppointmentType {
+    switch (type) {
+      case 'First Visit':
+        return AppointmentType.FIRST_VISIT;
+      case 'Follow-up':
+        return AppointmentType.FOLLOW_UP;
+      default:
+        throw new Error(`Invalid appointment type: ${type}`);
+    }
   }
 }

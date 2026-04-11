@@ -13,6 +13,7 @@ if(token) {
       id: decoded.userId,
       email: decoded.email,
       clinic_id: decoded.clinic_id,
+      name: decoded.name,
     };
   } catch(err) {
     console.log("Invalid token ", err);
@@ -141,6 +142,7 @@ const authSlice = createSlice({
           id: decoded.userId,
           email: decoded.email,
           clinic_id: decoded.clinic_id,
+          name: decoded.name,
         };
 
         localStorage.setItem("access_token", token);

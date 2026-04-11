@@ -77,6 +77,7 @@ export class AuthService {
       userId: user.id,
       email: user.email,
       clinic_id: user.clinic_id,
+      name: user.name,
     });
 
     console.log('Value of clinic id', user.clinic_id);
@@ -115,27 +116,27 @@ export class AuthService {
       where: { email: body.email },
     });
 
-    // ❌ No user or no OTP
+    // No user or no OTP
     if (!doctor || !doctor.reset_otp) {
       throw new BadRequestException('Invalid OTP');
     }
 
-    // ⏰ Expiry check
+    // Expiry check
     if (!doctor.reset_otp_expiry || doctor.reset_otp_expiry < new Date()) {
       throw new BadRequestException('OTP expired');
     }
 
-    // ❌ OTP mismatch
+    // OTP mismatch
     if (doctor.reset_otp !== body.otp) {
       throw new BadRequestException('Incorrect OTP');
     }
 
-    // 🔐 Hash new password
+    // Hash new password
     const hashed = await bcrypt.hash(body.newPassword, 10);
 
     doctor.password = hashed;
 
-    // 🧹 Clear OTP after use
+    // Clear OTP after use
     doctor.reset_otp = null;
     doctor.reset_otp_expiry = null;
 

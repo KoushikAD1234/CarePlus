@@ -16,7 +16,7 @@ export class AppointmentService {
   async create(body: CreateAppointmentDto, doctor_id: string) {
     const appointment = this.appointmentRepo.create({
       ...body,
-      doctor_id,
+      // doctor_id,
       clinic_id: 'default-clinic',
       appointment_time: new Date(body.appointment_time),
     });
