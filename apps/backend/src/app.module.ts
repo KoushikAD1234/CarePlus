@@ -11,6 +11,7 @@ import { Appointment } from './database/entities/appointment.entity';
 import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 import { MailModule } from './modules/mail/mail.module';
 import { DoctorModule } from './modules/doctor/doctor.module';
+import { HealthController } from './health/health.controller';
 
 /* NestJS uses a Module Tree structure.
  1. AppModule is the "Root."
@@ -51,6 +52,7 @@ import { DoctorModule } from './modules/doctor/doctor.module';
     MailModule,
     DoctorModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {
   // Depecdency Injector: This is more specifically constructor injection.
