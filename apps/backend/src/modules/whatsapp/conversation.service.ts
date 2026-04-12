@@ -14,7 +14,10 @@ export class ConversationService {
   ) {}
 
   async getOrCreate(phone: string) {
-    let convo = await this.conversationRepo.findOne({ where: { phone } });
+    let convo = await this.conversationRepo.findOne({
+      where: { phone },
+      order: { id: 'DESC' },
+    });
 
     if (!convo) {
       convo = this.conversationRepo.create({

@@ -10,6 +10,7 @@ import { AppointmentModule } from './modules/appointment/appointment.module';
 import { Appointment } from './database/entities/appointment.entity';
 import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 import { MailModule } from './modules/mail/mail.module';
+import { DoctorModule } from './modules/doctor/doctor.module';
 
 /* NestJS uses a Module Tree structure.
  1. AppModule is the "Root."
@@ -44,6 +45,7 @@ import { MailModule } from './modules/mail/mail.module';
     AppointmentModule,
     WhatsappModule,
     MailModule,
+    DoctorModule,
   ],
 })
 export class AppModule {

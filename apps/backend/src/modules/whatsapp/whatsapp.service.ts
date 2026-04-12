@@ -17,16 +17,15 @@ export class WhatsappService {
 
     let { convo, isNew } = await this.convoService.getOrCreate(from);
 
-    // This explicit typing fixes the "not assignable" error
-    let reply: string | null = null;
+    // 🔥 ALWAYS call the handler first to check for special entry commands (like QR codes)
+    let reply = await this.handler.handle(convo, message);
 
-    if (isNew) {
+    // If the handler didn't return a specific response (and it's a fresh session),
+    // then fallback to the default greeting.
+    if (!reply && isNew) {
       reply = "Hi! What's your name?";
-    } else {
-      reply = await this.handler.handle(convo, message);
     }
 
-    // Only send a message if there is string content
     if (reply !== null) {
       await this.sender.sendMessage(from, reply);
     }

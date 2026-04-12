@@ -11,6 +11,7 @@ import { Repository } from 'typeorm';
 import { AppointmentService } from '../appointment/appointment.service';
 import { AppointmentType } from 'src/database/entities/appointment.entity';
 import { WhatsappSender } from './whatsapp.sender';
+import { parseEntryMessage } from 'src/common/utils/entry-parser';
 
 @Injectable()
 export class ConversationHandler {
@@ -32,6 +33,34 @@ export class ConversationHandler {
 
   async handle(convo: Conversation, message: string): Promise<string | null> {
     const msg = message.trim();
+    const entry = parseEntryMessage(msg);
+
+    console.log('RAW MESSAGE:', message);
+    console.log('PARSED ENTRY:', entry);
+
+    // HANDLE QR ENTRY
+    if (entry.type === 'DOCTOR_DIRECT' && !convo.doctor_id) {
+      const doctor = await this.doctorRepo.findOne({
+        where: { id: entry.doctorId },
+      });
+
+      console.log('Value of doctor_id ', entry.doctorId);
+      console.log('Value of Doctor is ', doctor);
+
+      if (!doctor) {
+        return '❌ Invalid doctor. Please try again.';
+      }
+
+      console.log('Saving doctor_id:', doctor.id);
+
+      await this.convoService.save({
+        ...convo,
+        doctor_id: doctor.id,
+        step: ConversationStep.ASK_NAME,
+      });
+
+      return `👨‍⚕️ Booking with Dr. ${doctor.name}\n\nPlease enter your name`;
+    }
 
     switch (convo.step) {
       case ConversationStep.ASK_NAME:
@@ -67,6 +96,17 @@ export class ConversationHandler {
         convo.gender =
           msg === '1' || msg.toLowerCase() === 'male' ? 'Male' : 'Female';
 
+        console.log('Doctor ID at ASK_GENDER:', convo.doctor_id);
+
+        // 🔥 Skip doctor selection if already set
+        if (convo.doctor_id && convo.doctor_id !== '') {
+          convo.step = ConversationStep.ASK_DATE;
+          await this.convoService.save(convo);
+
+          await this.sender.sendTemplate(convo.phone, this.TEMPLATES.DATE);
+          return null;
+        }
+
         const doctors = await this.doctorRepo.find({
           where: { clinic_id: 'default-clinic' },
         });
@@ -83,6 +123,7 @@ export class ConversationHandler {
           this.TEMPLATES.DOCTOR_LIST,
           doctors,
         );
+
         return null;
       }
 
