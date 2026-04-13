@@ -192,7 +192,7 @@ export default function AuthModal({ isOpen, onClose }) {
                       </span>
                     </div>
                     <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
-                      Medi<span className="text-blue-600">Care</span>
+                      Care<span className="text-blue-600">Plus</span>
                     </h2>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mt-2">
                       {isForgotPassword

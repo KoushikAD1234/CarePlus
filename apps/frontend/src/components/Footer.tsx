@@ -9,7 +9,7 @@ export default function Footer() {
           {/* Brand Column */}
           <div className="col-span-1 md:col-span-1">
             <h2 className="text-2xl font-black text-blue-600 mb-4 tracking-tighter">
-              MediCare
+              CarePlus
             </h2>
             <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed mb-6">
               Empowering healthcare providers with smart, digital-first
@@ -93,7 +93,7 @@ export default function Footer() {
         {/* Bottom Copyright Bar */}
         <div className="pt-8 border-t border-gray-100 dark:border-gray-900 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-xs text-gray-400 font-medium">
-            © 2026 MediCare Systems. Built with precision for healthcare.
+            © 2026 CarePlus. Built with precision for healthcare.
           </p>
           <div className="flex gap-8 text-[11px] font-bold text-gray-400 uppercase tracking-tighter">
             <span className="hover:text-blue-600 cursor-pointer transition-colors">

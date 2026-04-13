@@ -33,7 +33,7 @@ function TrustSection() {
   const testimonials = [
     {
       quote:
-        "MediCare transformed our daily workflow. The automated SMS reminders reduced our no-shows by 40%.",
+        "CarePlus transformed our daily workflow. The automated SMS reminders reduced our no-shows by 40%.",
       author: "Dr. Arpan Das",
       role: "Chief Surgeon, City Hospital",
       img: "👨‍⚕️",

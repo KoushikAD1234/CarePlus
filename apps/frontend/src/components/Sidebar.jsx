@@ -84,7 +84,9 @@ export default function Sidebar() {
             to="/"
             className="text-2xl font-black text-blue-600 tracking-tighter"
           >
-            MediCare
+            <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+              Care<span className="text-blue-600">Plus</span>
+            </h2>
           </Link>
           <div className="flex items-center gap-2 mt-1">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />

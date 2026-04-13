@@ -48,7 +48,9 @@ export default function Navbar({
             onClick={onHeroClick}
             className="text-2xl font-black text-blue-600 tracking-tighter hover:scale-105 transition-transform"
           >
-            MediCare
+            <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+              Care<span className="text-blue-600">Plus</span>
+            </h2>
           </Link>
 
           {/* Center Menu Items */}
