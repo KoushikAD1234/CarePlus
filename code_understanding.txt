@@ -1,40 +1,64 @@
-1. To run Postgres and Redis in Docker Container:
-    -> RUN: docker-compose up -d
-    -> docker ps : This command will show the running docker container.
+### Code Understanding & Workflow: CarePlus CMS
 
-2. Initialize nestjs and create backend Directory and setup
-    -> npx @nestjs/cli new apps/backend
+---
 
-3. Inside Backend directory, we have to initialize dependency:
-    -> npm install @nestjs/typeorm typeorm pg
-    -> npm install @nestjs/config
-    -> npm install @nestjs/jwt passport passport-jwt bcrypt
-    -> npm install bullmq ioredis
+#### 1. Running Infrastructure with Docker
+Before starting the backend, the database and caching layers must be active.
+* **Run Services:** `docker-compose up -d` (Runs Postgres and Redis in detached mode).
+* **Verify Status:** `docker ps` (Displays running containers, ports, and health status).
 
-4. To run the backend: RUN: npm run start:dev
+#### 2. NestJS Project Initialization
+The backend is structured as a standalone service within the apps directory.
+* **Command:** `npx @nestjs/cli new apps/backend`
 
-5. Create Modules: Example of creating the Auth Modules
-    -> nest g module auth
-    -> nest g controller auth
-    -> nest g service auth
+#### 3. Core Dependency Installation
+These packages handle the database connection, security, and background processing.
+* **Database (Postgres):** `npm install @nestjs/typeorm typeorm pg`
+* **Configuration:** `npm install @nestjs/config`
+* **Security (JWT & Bcrypt):** `npm install @nestjs/jwt passport passport-jwt bcrypt`
+* **Background Tasks (Redis):** `npm install bullmq ioredis`
+* **Types:** `npm install -D @types/passport-jwt @types/bcrypt`
 
-    Service: Includes all Business logic.
-    Controller: Includes the API calls, metadata and routing.
+#### 4. Development Execution
+* **Run Backend:** `npm run start:dev` (Starts the server with "watch mode" to auto-reload on code changes).
 
-    How they work together?
-        -> The Module bundles the Controller and Service together.
-        -> A user sends a request to a URL defined in the Controller.
-        -> The Controller calls a function in the Service.
-        -> The Service does the heavy lifting (like saving a Doctor to the DB).
-        -> The Service returns the data to the Controller, which sends it back to the user.
+#### 5. Module Architecture (The NestJS "Big Three")
+To keep the code clean, we split features into Modules. For example, the **Auth Module**:
+* **Generate Module:** `nest g module auth` (The bundle/container).
+* **Generate Controller:** `nest g controller auth` (Handles API routes and requests).
+* **Generate Service:** `nest g service auth` (Handles business logic and DB interaction).
 
-6. ORM is the Object Relational Model, technique (and a type of library) that lets you 
-    interact with a database using the programming language you already know (like TypeScript) 
-    instead of writing raw SQL queries.
+**The Workflow Loop:**
+1.  **Request:** A user hits a URL (e.g., `POST /auth/login`) defined in the **Controller**.
+2.  **Logic:** The Controller delegates the task to a specific function in the **Service**.
+3.  **Heavy Lifting:** The Service interacts with the Database (via the Entity) or performs calculations.
+4.  **Response:** The Service returns the result to the Controller, which sends the final JSON response back to the user.
 
-        -> entity file is responsible for ORM DB schema.
-        -> you can verify the table creation in TablePlus app.
+#### 6. Database Interaction: ORM & Entities
+**ORM (Object Relational Mapper)** allows us to interact with Postgres using TypeScript classes instead of raw SQL strings.
+* **Entity File:** Defines the database schema (Columns, Data Types, Constraints).
+* **Synchronization:** Changes in the Entity file reflect in the DB.
+* **Verification:** Use the **TablePlus** app to connect to `localhost:5432` and visually inspect the tables.
 
-7. Installing JWT packages:
-    -> npm install @nestjs/jwt passport passport-jwt
-    -> npm install -D @types/passport-jwt
+#### 7. Security & JWT Implementation
+We use JSON Web Tokens (JWT) to protect routes (like the Doctor Dashboard).
+* **Installation:** `npm install @nestjs/jwt passport passport-jwt`
+* **Strategy:** The server issues a token upon login. The frontend must send this token in the "Authorization" header for all protected requests.
+
+#### 8. Database Management & Relationships
+* **Repository Pattern:** We use `this.repository.find()` or `.save()` for standard operations.
+* **Entity Relationships:**
+    * **One-to-Many:** One Doctor manages multiple Appointments.
+    * **Many-to-One:** Many Appointments are linked to a single Patient.
+
+#### 9. Essential Development Commands
+| Task | Command |
+| :--- | :--- |
+| **Generate Full Resource** | `nest g res [name]` (Generates Module, Service, Controller, and Entity) |
+| **Check Container Logs** | `docker logs -f [container_name]` |
+| **Reset Database** | `docker-compose down -v` (Warning: Deletes all local data) |
+
+#### 10. Best Practices for the Team
+* **DTOs (Data Transfer Objects):** Always create a DTO file to validate incoming request data.
+* **Environment Variables:** Never hardcode API keys or DB passwords. Always use the `.env` file via `ConfigService`.
+* **Error Handling:** Use built-in NestJS exceptions (e.g., `throw new ConflictException('Slot already booked')`).
