@@ -26,7 +26,7 @@ export class WhatsappService {
     // 3. Send the reply if the handler generated one
     // (Handler returns null if it sent a Twilio Template instead)
     if (reply !== null) {
-      await this.sender.sendMessage(from, reply);
+      await this.sender.sendMessage(from, reply, '');
     }
 
     return { success: true };

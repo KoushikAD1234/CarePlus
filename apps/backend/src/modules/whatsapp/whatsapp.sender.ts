@@ -12,33 +12,60 @@ export class WhatsappSender {
     return `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`;
   }
 
-  async sendMessage(to: string, message: string) {
+  /**
+   * Universal message method: handles both text-only and media WhatsApp messages.
+   */
+  async sendMessage(to: string, message: string, mediaUrl?: string) {
     const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+    const formattedFrom = process.env.TWILIO_WHATSAPP_NUMBER?.startsWith(
+      'whatsapp:',
+    )
+      ? process.env.TWILIO_WHATSAPP_NUMBER
+      : `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`;
+
+    const params = new URLSearchParams({
+      From: formattedFrom!,
+      To: formattedTo,
+      Body: message,
+    });
+
+    // Only append MediaUrl parameter if a valid URL string is provided
+    if (mediaUrl && mediaUrl.trim().length > 0) {
+      params.append('MediaUrl', mediaUrl.trim());
+    }
+
     try {
-      await axios.post(
-        this.url,
-        new URLSearchParams({
-          From: process.env.TWILIO_WHATSAPP_NUMBER!,
-          To: formattedTo,
-          Body: message,
-        }),
-        {
-          auth: this.auth,
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        },
+      const response = await axios.post(this.url, params, {
+        auth: this.auth,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+
+      console.log(
+        `✅ WhatsApp message sent to ${formattedTo}. SID: ${response.data.sid}`,
       );
+      return response.data;
     } catch (error: any) {
-      console.error('❌ Text Error:', error?.response?.data || error.message);
+      console.error(
+        '❌ Twilio Send Error:',
+        error?.response?.data || error.message,
+      );
+      throw error;
     }
   }
 
   async sendTemplate(to: string, contentSid: string) {
     const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+    const formattedFrom = process.env.TWILIO_WHATSAPP_NUMBER?.startsWith(
+      'whatsapp:',
+    )
+      ? process.env.TWILIO_WHATSAPP_NUMBER
+      : `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`;
+
     try {
       await axios.post(
         this.url,
         new URLSearchParams({
-          From: process.env.TWILIO_WHATSAPP_NUMBER!,
+          From: formattedFrom!,
           To: formattedTo,
           ContentSid: contentSid,
         }),
@@ -61,22 +88,25 @@ export class WhatsappSender {
    */
   async sendDoctorList(to: string, contentSid: string, doctors: any[]) {
     const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+    const formattedFrom = process.env.TWILIO_WHATSAPP_NUMBER?.startsWith(
+      'whatsapp:',
+    )
+      ? process.env.TWILIO_WHATSAPP_NUMBER
+      : `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`;
 
-    // Map your DB doctors to the variables set in Twilio Console
-    const variables = {};
+    const variables: Record<string, string> = {};
 
-    // We limit to the number of rows you created in the template (e.g., top 3)
     doctors.slice(0, 3).forEach((doc, index) => {
       const num = index + 1;
-      variables[`${num}`] = doc.name; // Maps to {{1}}, {{2}}...
-      variables[`${num}id`] = doc.id; // Maps to {{1id}}, {{2id}}...
+      variables[`${num}`] = doc.name;
+      variables[`${num}id`] = doc.id;
     });
 
     try {
       await axios.post(
         this.url,
         new URLSearchParams({
-          From: process.env.TWILIO_WHATSAPP_NUMBER!,
+          From: formattedFrom!,
           To: formattedTo,
           ContentSid: contentSid,
           ContentVariables: JSON.stringify(variables),

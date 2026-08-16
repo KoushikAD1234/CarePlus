@@ -4,6 +4,7 @@ import { JwtAuthGuard } from 'src/common/guards/jwt/jwt.guard';
 import { CreateAppointmentDto } from 'src/dto/create-appointment.dto';
 import { GetAppointmentsDto } from 'src/dto/get-appointment.dto';
 import { UpdateStatusDto } from 'src/dto/update-status.dto';
+import { SendPrescriptionDto } from 'src/dto/send-prescription.dto';
 
 @Controller('appointments')
 export class AppointmentController {
@@ -43,5 +44,11 @@ export class AppointmentController {
   findAll(@Req() req: any) {
     // return this.appointmentService.findAll(req.user.clinic_id);
     return this.appointmentService.findAll(req.user.id);
+  }
+
+  // @UseGuards(JwtAuthGuard)
+  @Post('send-prescription')
+  sendPrescription(@Body() body: SendPrescriptionDto) {
+    return this.appointmentService.sendPrescription(body);
   }
 }
