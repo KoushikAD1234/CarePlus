@@ -7,6 +7,7 @@ import {
   Headphones,
   LogOut,
   ChevronRight,
+  User,
 } from "lucide-react";
 import { useState } from "react";
 import Toast from '../components/Toast'
@@ -72,6 +73,7 @@ export default function Sidebar() {
   // Growth & Support Links (Phase 3)
   const supportItems = [
     { icon: Zap, label: "Upgrade", path: "/dashboard/upgrade" },
+    { icon: User, label: "Profile", path: "/dashboard/profile" },
     { icon: Headphones, label: "Contact", path: "/dashboard/contact" },
   ];
 

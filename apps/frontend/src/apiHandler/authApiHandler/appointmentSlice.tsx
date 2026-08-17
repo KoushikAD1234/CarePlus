@@ -77,7 +77,6 @@ const appointmentSlice = createSlice({
         state.items = state.items.filter((itr) => itr.id !== action.payload)
       })
       .addCase(updateStatus.fulfilled, (state, action) => {
-        // This logic is correct!
         const index = state.items.findIndex(
           (item) => item.id === action.payload.id
         );

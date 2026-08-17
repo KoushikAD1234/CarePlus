@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity()
 export class Doctor {
@@ -15,6 +21,27 @@ export class Doctor {
   email: string;
 
   @Column()
+  phone: string;
+
+  @Column({ nullable: true })
+  qualification: string;
+
+  @Column({ nullable: true })
+  specialization: string;
+
+  @Column({ nullable: true })
+  address: string;
+
+  @Column({ nullable: true })
+  registration_number: string;
+
+  @Column({ nullable: true })
+  fees: number;
+
+  @Column({ nullable: true })
+  avatar_url: string;
+
+  @Column()
   password?: string;
 
   @Column({ type: 'varchar', nullable: true })
@@ -22,4 +49,10 @@ export class Doctor {
 
   @Column({ type: 'timestamp', nullable: true })
   reset_otp_expiry!: Date | null;
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
 }

@@ -25,10 +25,17 @@ export default function AuthModal({ isOpen, onClose }) {
   const [regSuccess, setRegSuccess] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
+  // Extended initial state matching backend Doctor entity and SignupDto
   const [form, setForm] = useState({
     name: "",
     email: "",
+    phone: "",
+    qualification: "",
+    registration_number: "",
+    specialization: "",
+    address: "",
     password: "",
+    fees: "",
     otp: "",
     newPassword: "",
   });
@@ -50,7 +57,20 @@ export default function AuthModal({ isOpen, onClose }) {
       dispatch(loginUser({ email: form.email, password: form.password }));
     } else {
       wasRegistrationAttempted.current = true;
-      dispatch(registerUser(form));
+      // Dispatch full payload matching backend SignupDto
+      dispatch(
+        registerUser({
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          qualification: form.qualification,
+          registration_number: form.registration_number,
+          fees: Number(form.fees),
+          specialization: form.specialization,
+          address: form.address,
+          password: form.password,
+        })
+      );
     }
   };
 
@@ -74,7 +94,19 @@ export default function AuthModal({ isOpen, onClose }) {
       setIsForgotPassword(false);
       setResetStep(1);
       setIsLogin(true);
-      setForm({ ...form, otp: "", newPassword: "" });
+      setForm({
+        name: "",
+        email: "",
+        phone: "",
+        qualification: "",
+        registration_number: "",
+        fees: "",
+        specialization: "",
+        address: "",
+        password: "",
+        otp: "",
+        newPassword: "",
+      });
     }, 3000);
   };
 
@@ -103,6 +135,12 @@ export default function AuthModal({ isOpen, onClose }) {
         setForm({
           name: "",
           email: "",
+          phone: "",
+          qualification: "",
+          registration_number: "",
+          fees: "",
+          specialization: "",
+          address: "",
           password: "",
           otp: "",
           newPassword: "",
@@ -126,7 +164,9 @@ export default function AuthModal({ isOpen, onClose }) {
 
           <motion.div
             layout
-            className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-[3rem] shadow-2xl border border-gray-200 dark:border-white/5 overflow-hidden z-20"
+            className={`relative w-full ${
+              !isLogin && !isForgotPassword ? "max-w-2xl" : "max-w-md"
+            } bg-white dark:bg-gray-900 rounded-[3rem] shadow-2xl border border-gray-200 dark:border-white/5 overflow-hidden z-20 transition-all duration-300`}
           >
             <AnimatePresence mode="wait">
               {isSuccess ? (
@@ -172,7 +212,7 @@ export default function AuthModal({ isOpen, onClose }) {
               ) : (
                 <motion.div
                   key="form"
-                  className="p-10"
+                  className="p-8 sm:p-10 max-h-[85vh] overflow-y-auto"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -184,7 +224,7 @@ export default function AuthModal({ isOpen, onClose }) {
                     <X size={20} />
                   </button>
 
-                  <div className="text-center mb-10">
+                  <div className="text-center mb-8">
                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-full mb-4 border border-blue-100 dark:border-blue-800/30">
                       <ShieldCheck size={14} className="text-blue-600" />
                       <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">
@@ -199,47 +239,106 @@ export default function AuthModal({ isOpen, onClose }) {
                         ? `Reset Password: Step ${resetStep}`
                         : isLogin
                         ? "Provider Login"
-                        : "New Registration"}
+                        : "New Doctor Registration"}
                     </p>
                   </div>
 
                   <form className="space-y-4" onSubmit={handleSubmit}>
+                    {/* --- REGISTRATION SPECIFIC FIELDS --- */}
                     {!isLogin && !isForgotPassword && (
-                      <input
-                        name="name"
-                        type="text"
-                        placeholder="Dr. Full Name"
-                        required
-                        value={form.name}
-                        onChange={handleChange}
-                        className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium"
-                      />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <input
+                          name="name"
+                          type="text"
+                          placeholder="Dr. Full Name *"
+                          required
+                          value={form.name}
+                          onChange={handleChange}
+                          className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium text-sm"
+                        />
+                        <input
+                          name="phone"
+                          type="tel"
+                          placeholder="Phone Number *"
+                          required
+                          value={form.phone}
+                          onChange={handleChange}
+                          className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium text-sm"
+                        />
+                        <input
+                          name="qualification"
+                          type="text"
+                          placeholder="Qualification (e.g. MBBS, MD) *"
+                          required
+                          value={form.qualification}
+                          onChange={handleChange}
+                          className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium text-sm"
+                        />
+                        <input
+                          name="registration_number"
+                          type="text"
+                          placeholder="Medical Reg. Number *"
+                          required
+                          value={form.registration_number}
+                          onChange={handleChange}
+                          className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium text-sm"
+                        />
+                        <input
+                          name="specialization"
+                          type="text"
+                          placeholder="Specialization *"
+                          required
+                          value={form.specialization}
+                          onChange={handleChange}
+                          className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium text-sm"
+                        />
+                        <input
+                          name="address"
+                          type="text"
+                          placeholder="Clinic Address"
+                          value={form.address}
+                          onChange={handleChange}
+                          className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium text-sm"
+                        />
+                        <input
+                          name="fees"
+                          type="number"
+                          placeholder="Consultation Fees *"
+                          required
+                          value={form.fees}
+                          onChange={handleChange}
+                          className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium text-sm"
+                        />
+                      </div>
                     )}
 
+                    {/* --- COMMON EMAIL FIELD --- */}
                     {(!isForgotPassword || resetStep === 1) && (
                       <input
                         name="email"
                         type="email"
-                        placeholder="Email Address"
+                        placeholder="Email Address *"
                         required
                         value={form.email}
                         onChange={handleChange}
-                        className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium shadow-inner"
+                        className="w-full p-4.5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium text-sm shadow-inner"
                       />
                     )}
 
+                    {/* --- COMMON PASSWORD FIELD --- */}
                     {!isForgotPassword && (
                       <input
                         name="password"
                         type="password"
-                        placeholder="Password"
+                        placeholder="Password *"
                         required
                         value={form.password}
                         onChange={handleChange}
-                        className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium"
+                        className="w-full p-4.5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium text-sm"
                       />
                     )}
 
+                    {/* --- FORGOT PASSWORD STEP 2 --- */}
                     {isForgotPassword && resetStep === 2 && (
                       <>
                         <motion.input
@@ -251,7 +350,7 @@ export default function AuthModal({ isOpen, onClose }) {
                           required
                           value={form.otp}
                           onChange={handleChange}
-                          className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium"
+                          className="w-full p-4.5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium text-sm"
                         />
                         <motion.input
                           initial={{ x: 20, opacity: 0 }}
@@ -263,7 +362,7 @@ export default function AuthModal({ isOpen, onClose }) {
                           required
                           value={form.newPassword}
                           onChange={handleChange}
-                          className="w-full p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium"
+                          className="w-full p-4.5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-blue-600/30 outline-none dark:text-white font-medium text-sm"
                         />
                       </>
                     )}
@@ -284,7 +383,7 @@ export default function AuthModal({ isOpen, onClose }) {
                       disabled={loading}
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
-                      className="w-full bg-blue-600 text-white font-black text-xs uppercase tracking-widest py-5 rounded-2xl shadow-xl shadow-blue-600/30 mt-6 flex items-center justify-center gap-3"
+                      className="w-full bg-blue-600 text-white font-black text-xs uppercase tracking-widest py-4.5 rounded-2xl shadow-xl shadow-blue-600/30 mt-6 flex items-center justify-center gap-3 cursor-pointer"
                     >
                       {loading ? (
                         <Loader2 className="animate-spin" size={18} />
@@ -302,12 +401,12 @@ export default function AuthModal({ isOpen, onClose }) {
                     </motion.button>
                   </form>
 
-                  {/* --- NEW TOGGLE BUTTONS SECTION --- */}
-                  <div className="mt-8 flex flex-col gap-4 text-center">
+                  {/* --- TOGGLE BUTTONS SECTION --- */}
+                  <div className="mt-6 flex flex-col gap-4 text-center">
                     {!isForgotPassword ? (
                       <button
                         onClick={() => setIsLogin(!isLogin)}
-                        className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 transition-all"
+                        className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 transition-all cursor-pointer"
                       >
                         {isLogin
                           ? "Don't have an account? Create one"
@@ -319,7 +418,7 @@ export default function AuthModal({ isOpen, onClose }) {
                           if (resetStep === 2) setResetStep(1);
                           else toggleForgotPassword(false);
                         }}
-                        className="flex items-center justify-center gap-2 w-full text-xs font-black text-gray-400 hover:text-blue-600 uppercase tracking-widest transition-all"
+                        className="flex items-center justify-center gap-2 w-full text-xs font-black text-gray-400 hover:text-blue-600 uppercase tracking-widest transition-all cursor-pointer"
                       >
                         <ArrowLeft size={14} /> Back to{" "}
                         {resetStep === 2 ? "Step 1" : "Login"}

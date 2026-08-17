@@ -47,6 +47,12 @@ export class AuthService {
     const doctor = this.doctorRepo.create({
       name: body.name,
       email: body.email,
+      phone: body.phone,
+      qualification: body.qualification,
+      registration_number: body.registration_number,
+      specialization: body.specialization,
+      fees: body.fees,
+      address: body.address,
       password: hashedPassword,
       clinic_id: 'default-clinic',
     });

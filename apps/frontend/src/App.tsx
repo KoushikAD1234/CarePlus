@@ -5,6 +5,7 @@ import Appointments from "./pages/Appointments";
 import DashboardHome from "./pages/Dashboard"; // Ensure this matches your filename
 import ContactPage from "./pages/Contact";
 import Upgrade from "./pages/Upgrade";
+import Profile from "./pages/Profile";
 
 function App() {
   return (
@@ -27,6 +28,10 @@ function App() {
           <Route
             path="upgrade"
             element={<Upgrade />}
+          />
+          <Route
+            path="profile"
+            element={<Profile />}
           />
           <Route
             path="contact"

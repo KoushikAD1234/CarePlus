@@ -1,8 +1,9 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from './apiHandler/authApiHandler/authSlice';
-import appointmentReducer from './apiHandler/authApiHandler/appointmentSlice'
+import appointmentReducer from './apiHandler/authApiHandler/appointmentSlice';
 import patientReducer from "./apiHandler/authApiHandler/patientSlice";
-import contactReducer from "./apiHandler/authApiHandler/contactSlice"
+import contactReducer from "./apiHandler/authApiHandler/contactSlice";
+import doctorReducer from "./apiHandler/authApiHandler/doctorSlice";
 
 export const store = configureStore({
     reducer: {
@@ -10,5 +11,6 @@ export const store = configureStore({
         appointments: appointmentReducer,
         patients: patientReducer,
         contact: contactReducer,
+        doctors: doctorReducer,
     }
 })
