@@ -11,6 +11,7 @@ import {
   X,
   FileDown,
   Send,
+  AlertCircle,
 } from "lucide-react";
 import WalkInModal from "../components/WalkInModal";
 import { useDispatch, useSelector } from "react-redux";
@@ -25,8 +26,67 @@ import {
   createPatient,
   getPatientById,
 } from "../apiHandler/authApiHandler/patientSlice";
-import { fetchProfile } from "../apiHandler/authApiHandler/doctorSlice"; // Added Doctor Profile Thunk
+import { fetchProfile } from "../apiHandler/authApiHandler/doctorSlice";
 import { jsPDF } from "jspdf";
+
+// Translates raw backend errors into clear, non-technical sentences
+const getFriendlyErrorMessage = (err) => {
+  if (!err)
+    return "Something went wrong. Please verify your details and try again.";
+
+  let rawText = "";
+  if (typeof err === "string") {
+    rawText = err;
+  } else if (Array.isArray(err)) {
+    rawText = err.join(" ");
+  } else if (typeof err === "object") {
+    const candidate =
+      err.message ||
+      err.data?.message ||
+      err.response?.data?.message ||
+      err.error;
+    if (Array.isArray(candidate)) {
+      rawText = candidate.join(" ");
+    } else if (typeof candidate === "string") {
+      rawText = candidate;
+    } else {
+      rawText = JSON.stringify(err);
+    }
+  }
+
+  const cleanMsg = String(rawText).toLowerCase();
+
+  if (cleanMsg.includes("404") || cleanMsg.includes("not found")) {
+    return "The requested record could not be found. It may have already been removed.";
+  }
+  if (cleanMsg.includes("phone") || cleanMsg.includes("number")) {
+    return "Please make sure the phone number is valid and includes the correct digits.";
+  }
+  if (cleanMsg.includes("whatsapp") || cleanMsg.includes("send")) {
+    return "Unable to deliver the message via WhatsApp. Please verify the patient's phone number and internet connection.";
+  }
+  if (
+    cleanMsg.includes("network") ||
+    cleanMsg.includes("fetch") ||
+    cleanMsg.includes("connect")
+  ) {
+    return "Unable to connect to the server. Please check your internet connection and try again.";
+  }
+  if (cleanMsg.includes("500") || cleanMsg.includes("server")) {
+    return "Our system experienced a temporary issue. Please wait a moment and try again.";
+  }
+
+  if (
+    typeof rawText === "string" &&
+    rawText.length > 0 &&
+    rawText.length < 120 &&
+    !rawText.includes("{")
+  ) {
+    return rawText;
+  }
+
+  return "We couldn't complete this action right now. Please check your details and try again.";
+};
 
 export default function Appointments() {
   const [activeFilter, setActiveFilter] = useState("today");
@@ -39,6 +99,11 @@ export default function Appointments() {
   const [prescriptionText, setPrescriptionText] = useState("");
   const [prescriptionAppt, setPrescriptionAppt] = useState(null);
   const [isSending, setIsSending] = useState(false);
+
+  // User-friendly feedback states
+  const [pageAlert, setPageAlert] = useState(null);
+  const [modalAlert, setModalAlert] = useState(null);
+
   const itemsPerPage = 5;
 
   const dispatch = useDispatch();
@@ -58,6 +123,7 @@ export default function Appointments() {
   }, [dispatch, user?.id]);
 
   useEffect(() => {
+    setPageAlert(null);
     if (searchQuery) {
       const timer = setTimeout(() => {
         dispatch(
@@ -85,68 +151,87 @@ export default function Appointments() {
   );
 
   const handleDelete = async (id) => {
+    setPageAlert(null);
     if (window.confirm("Are you sure you want to delete this appointment?")) {
       try {
         await dispatch(deleteAppointment(id)).unwrap();
+        setPageAlert({
+          type: "success",
+          message: "Appointment successfully deleted from your schedule.",
+        });
       } catch (error) {
-        alert("Failed to delete appointment");
+        setPageAlert({
+          type: "error",
+          message: getFriendlyErrorMessage(error),
+        });
       }
     }
   };
 
   const toggleStatus = (id, currentStatus) => {
+    setPageAlert(null);
     const nextStatus = currentStatus === "COMPLETED" ? "BOOKED" : "COMPLETED";
     dispatch(updateStatus({ id, status: nextStatus }));
   };
 
-  const handleAddWalkIn = async (newPatient) => {
-    try {
-      const appointment_time = new Date(
-        `${newPatient.appointment_date}T${newPatient.appointment_time}`
-      ).toISOString();
+const handleAddWalkIn = async (newPatient) => {
+  try {
+    let patientId;
 
-      const typeMap = {
-        "First Visit": "FIRST_VISIT",
-        "Follow-up": "FOLLOW_UP",
-      };
-
-      let patientId;
-      const existingPatient = await dispatch(
-        getPatientById(newPatient.patient_id)
-      ).unwrap();
-
-      if (existingPatient?.id) {
-        patientId = existingPatient.id;
-      } else {
-        const createdPatient = await dispatch(
-          createPatient({
-            name: newPatient.name,
-            phone: newPatient.phone,
-            age: newPatient.age,
-            gender: newPatient.gender,
-            address: newPatient.address,
-          })
+    // Only query backend by ID if a valid ID actually exists
+    if (newPatient.patient_id && newPatient.patient_id !== "undefined") {
+      try {
+        const existingPatient = await dispatch(
+          getPatientById(newPatient.patient_id)
         ).unwrap();
-        patientId = createdPatient.id;
+        if (existingPatient?.id) {
+          patientId = existingPatient.id;
+        }
+      } catch (e) {
+        console.warn("Patient lookup failed, creating new record instead.");
       }
+    }
 
-      await dispatch(
-        createAppointments({
-          patient_id: patientId,
-          doctor_id: user?.id,
-          patient_name: newPatient.name,
-          patient_phone: newPatient.phone,
-          appointment_time,
-          type: typeMap[newPatient.type],
+    // Fallback: Create new patient if patientId wasn't resolved
+    if (!patientId) {
+      const createdPatient = await dispatch(
+        createPatient({
+          name: newPatient.name,
+          phone: newPatient.phone,
+          age: newPatient.age,
+          gender: newPatient.gender,
+          address: newPatient.address,
         })
       ).unwrap();
-
-      setIsWalkInOpen(false);
-      dispatch(fetchAppointments({ date: activeFilter }));
-    } catch (err) {
-      console.error("Walk-in failed:", err);
+      patientId = createdPatient.id;
     }
-  };
+
+    const appointment_time = new Date(
+      `${newPatient.appointment_date}T${newPatient.appointment_time}`
+    ).toISOString();
+
+    const typeMap = {
+      "First Visit": "FIRST_VISIT",
+      "Follow-up": "FOLLOW_UP",
+    };
+
+    await dispatch(
+      createAppointments({
+        patient_id: patientId,
+        doctor_id: user?.id,
+        patient_name: newPatient.name,
+        patient_phone: newPatient.phone,
+        appointment_time,
+        type: typeMap[newPatient.type],
+      })
+    ).unwrap();
+
+    setIsWalkInOpen(false);
+    dispatch(fetchAppointments({ date: activeFilter }));
+  } catch (err) {
+    console.error("Walk-in failed:", err);
+  }
+};
 
   const handleViewPatient = (appt) => {
     setSelectedAppointment(appt);
@@ -157,55 +242,41 @@ export default function Appointments() {
     console.log("Updated data ready for API:", updatedData);
   };
 
-  // Fetch full patient data before opening prescription modal
-  const handlePrescription = async (appt) => {
-    setPrescriptionText("");
-    setIsPrescriptionOpen(true);
+const handlePrescription = async (appt) => {
+  setPrescriptionText("");
+  setIsPrescriptionOpen(true);
 
-    let fullPatient = null;
-    if (appt?.patient_phone) {
-      try {
-        fullPatient = await dispatch(
-          getPatientById(appt.patient_id)
-        ).unwrap();
-      } catch (err) {
-        console.warn("Patient details fetch fallback:", err);
-      }
+  let fullPatient = null;
+
+  // ONLY call API if appt.patient_id is defined and not equal to "undefined"
+  if (appt?.patient_id && appt.patient_id !== "undefined") {
+    try {
+      fullPatient = await dispatch(getPatientById(appt.patient_id)).unwrap();
+    } catch (err) {
+      console.warn("Patient details fetch fallback:", err);
     }
+  }
 
-    setPrescriptionAppt({
-      ...appt,
-      patient_age: fullPatient?.age || appt?.age || "",
-      patient_gender: fullPatient?.gender || appt?.gender || "",
-      patient_address: fullPatient?.address || appt?.address || "",
-    });
-  };
+  setPrescriptionAppt({
+    ...appt,
+    patient_age: fullPatient?.age || appt?.age || "",
+    patient_gender: fullPatient?.gender || appt?.gender || "",
+    patient_address: fullPatient?.address || appt?.address || "",
+  });
+};
 
-  // Generate PDF
   const generatePDF = () => {
     if (!prescriptionAppt) return;
     const doc = new jsPDF();
-    console.log("Value of user name ", user?.name);
-    console.log("Value of doctor name ", doctorProfile?.name);
 
-    console.log("Value of user Qualification ", user?.qualification);
-    console.log("Value of doctor Qualification ", doctorProfile?.qualification);
-
-    // Doctor Details Resolution
     const dName = doctorProfile?.name || user?.name || "Name";
     const dQual = doctorProfile?.qualification || "Qualification";
     const dSpec = doctorProfile?.specialization || "Specialization";
     const dReg = doctorProfile?.registration_number || "Registration Number";
-    // const dClinic = doctorProfile?.clinic_name || "CarePlus Medical Center";
-    const dAddress =
-      doctorProfile?.address ||
-      "Address";
+    const dAddress = doctorProfile?.address || "Address";
     const dPhone = doctorProfile?.phone || "Contact Number";
     const dEmail = doctorProfile?.email || "Email id";
 
-    // console.log("Value of prescriptionAPPT ", prescriptionAppt);
-
-    // Patient Details Resolution
     const pName = prescriptionAppt.patient_name || "N/A";
     const pPhone = prescriptionAppt.patient_phone || "N/A";
     const pAge = prescriptionAppt.patient_age || "";
@@ -218,17 +289,14 @@ export default function Appointments() {
       year: "numeric",
     });
 
-    // 1. Background Fill
     doc.setFillColor(252, 253, 255);
     doc.rect(0, 0, 210, 297, "F");
 
-    // Top Dual Accent Bar
     doc.setFillColor(37, 99, 235);
     doc.rect(0, 0, 130, 4, "F");
     doc.setFillColor(99, 102, 241);
     doc.rect(130, 0, 80, 4, "F");
 
-    // 2. Doctor Details Header
     doc.setTextColor(15, 23, 42);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
@@ -259,7 +327,6 @@ export default function Appointments() {
     let contactY = currentY + 5.5 + wrappedClinicLine.length * 3.5;
     doc.text(`Contact: ${dPhone} | Email: ${dEmail}`, 14, contactY);
 
-    // 3. Top Right Branding Box
     doc.setFillColor(240, 246, 255);
     doc.roundedRect(142, 10, 54, 25, 3, 3, "F");
     doc.setDrawColor(219, 234, 254);
@@ -286,7 +353,6 @@ export default function Appointments() {
     doc.setLineWidth(0.4);
     doc.line(14, dividerY, 196, dividerY);
 
-    // 4. Expanded Patient Info Card
     const cardY = dividerY + 4;
     const cardHeight = 28;
 
@@ -299,7 +365,6 @@ export default function Appointments() {
     doc.setFillColor(37, 99, 235);
     doc.roundedRect(14, cardY, 2.5, cardHeight, 1, 1, "F");
 
-    // Col 1: Name
     doc.setTextColor(148, 163, 184);
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "bold");
@@ -308,7 +373,6 @@ export default function Appointments() {
     doc.setFontSize(9);
     doc.text(pName, 20, cardY + 13);
 
-    // Col 2: Phone
     doc.setTextColor(148, 163, 184);
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "bold");
@@ -317,7 +381,6 @@ export default function Appointments() {
     doc.setFontSize(9);
     doc.text(pPhone, 68, cardY + 13);
 
-    // Col 3: Age
     doc.setTextColor(148, 163, 184);
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "bold");
@@ -326,7 +389,6 @@ export default function Appointments() {
     doc.setFontSize(9);
     doc.text(pAge ? `${pAge} Yrs` : "N/A", 110, cardY + 13);
 
-    // Col 4: Gender
     doc.setTextColor(148, 163, 184);
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "bold");
@@ -335,7 +397,6 @@ export default function Appointments() {
     doc.setFontSize(9);
     doc.text(pGender || "N/A", 135, cardY + 13);
 
-    // Col 5: Date
     doc.setTextColor(148, 163, 184);
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "bold");
@@ -348,7 +409,6 @@ export default function Appointments() {
     doc.setLineWidth(0.3);
     doc.line(20, cardY + 17, 190, cardY + 17);
 
-    // Row 2: Address
     doc.setTextColor(148, 163, 184);
     doc.setFontSize(6.5);
     doc.setFont("helvetica", "bold");
@@ -359,7 +419,6 @@ export default function Appointments() {
     doc.setFont("helvetica", "normal");
     doc.text(pAddress, 36, cardY + 23);
 
-    // 5. Rx Symbol Header
     const rxY = cardY + cardHeight + 6;
     doc.setFillColor(37, 99, 235);
     doc.roundedRect(14, rxY, 11, 10, 2, 2, "F");
@@ -373,7 +432,6 @@ export default function Appointments() {
     doc.setLineWidth(0.7);
     doc.line(27, rxY + 5, 196, rxY + 5);
 
-    // 6. Medication Body Container
     const bodyY = rxY + 13;
     const bodyHeight = 175;
 
@@ -397,7 +455,6 @@ export default function Appointments() {
       printY += 6;
     });
 
-    // 7. Footer Bar
     const footerY = 282;
     doc.setDrawColor(226, 232, 240);
     doc.setLineWidth(0.4);
@@ -415,10 +472,14 @@ export default function Appointments() {
     doc.save(`Prescription_${pName.replace(/\s+/g, "_")}.pdf`);
   };
 
-  // Send WhatsApp Prescription via NestJS API
   const handleSendPrescription = async () => {
+    setModalAlert(null);
     if (!prescriptionText.trim()) {
-      alert("Please write a prescription before sending.");
+      setModalAlert({
+        type: "error",
+        message:
+          "Please write down the medication or clinical notes before sending.",
+      });
       return;
     }
 
@@ -449,18 +510,24 @@ export default function Appointments() {
       const data = await response.json();
 
       if (response.ok) {
-        alert(
-          `Prescription sent via WhatsApp to ${
+        setModalAlert({
+          type: "success",
+          message: `Prescription sent via WhatsApp to ${
             prescriptionAppt?.patient_name || "the patient"
-          }!`
-        );
-        setIsPrescriptionOpen(false);
+          }!`,
+        });
+        setTimeout(() => setIsPrescriptionOpen(false), 2000);
       } else {
-        alert(`Failed to send: ${data.message || "Unknown error"}`);
+        setModalAlert({
+          type: "error",
+          message: getFriendlyErrorMessage(data),
+        });
       }
     } catch (error) {
-      console.error("Error sending WhatsApp prescription:", error);
-      alert("Error connecting to backend server.");
+      setModalAlert({
+        type: "error",
+        message: getFriendlyErrorMessage(error),
+      });
     } finally {
       setIsSending(false);
     }
@@ -468,7 +535,6 @@ export default function Appointments() {
 
   return (
     <div className="space-y-6">
-      {/* UI Render Code */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
@@ -487,6 +553,46 @@ export default function Appointments() {
           + New Walk-in
         </button>
       </div>
+
+      {/* Main Page Alert Banner */}
+      <AnimatePresence>
+        {pageAlert && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className={`p-4 rounded-2xl border flex items-start gap-3 shadow-sm ${
+              pageAlert.type === "success"
+                ? "bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400"
+                : "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400"
+            }`}
+          >
+            <div
+              className={`p-2 rounded-xl shrink-0 ${
+                pageAlert.type === "success"
+                  ? "bg-green-500/20 text-green-500"
+                  : "bg-red-500/20 text-red-500"
+              }`}
+            >
+              {pageAlert.type === "success" ? (
+                <CheckCircle size={18} />
+              ) : (
+                <AlertCircle size={18} />
+              )}
+            </div>
+            <div className="text-xs leading-relaxed">
+              <p className="font-extrabold uppercase tracking-wider text-[10px] mb-0.5">
+                {pageAlert.type === "success"
+                  ? "Success Notice"
+                  : "Action Needed"}
+              </p>
+              <p className="font-medium text-gray-700 dark:text-gray-300">
+                {pageAlert.message}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="p-4 bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-white/5 shadow-xl flex flex-col lg:flex-row gap-4 justify-between">
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 lg:pb-0">
@@ -718,6 +824,46 @@ export default function Appointments() {
                 </button>
               </div>
 
+              {/* Prescription Modal Alert Banner */}
+              <AnimatePresence>
+                {modalAlert && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className={`p-4 rounded-2xl border flex items-start gap-3 shadow-sm ${
+                      modalAlert.type === "success"
+                        ? "bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400"
+                        : "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    <div
+                      className={`p-2 rounded-xl shrink-0 ${
+                        modalAlert.type === "success"
+                          ? "bg-green-500/20 text-green-500"
+                          : "bg-red-500/20 text-red-500"
+                      }`}
+                    >
+                      {modalAlert.type === "success" ? (
+                        <CheckCircle size={18} />
+                      ) : (
+                        <AlertCircle size={18} />
+                      )}
+                    </div>
+                    <div className="text-xs leading-relaxed">
+                      <p className="font-extrabold uppercase tracking-wider text-[10px] mb-0.5">
+                        {modalAlert.type === "success"
+                          ? "Message Delivered"
+                          : "Delivery Notice"}
+                      </p>
+                      <p className="font-medium text-gray-700 dark:text-gray-300">
+                        {modalAlert.message}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <div>
                 <label className="block text-[10px] font-black uppercase text-gray-400 mb-2">
                   Clinical Notes & Prescribed Medications
@@ -725,7 +871,10 @@ export default function Appointments() {
                 <textarea
                   rows={5}
                   value={prescriptionText}
-                  onChange={(e) => setPrescriptionText(e.target.value)}
+                  onChange={(e) => {
+                    setModalAlert(null);
+                    setPrescriptionText(e.target.value);
+                  }}
                   placeholder="Enter medications, dosage (e.g., Paracetamol 650mg - 1-0-1), and clinical advice..."
                   className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:border-blue-600 outline-none text-sm font-medium text-gray-900 dark:text-white resize-none"
                 />

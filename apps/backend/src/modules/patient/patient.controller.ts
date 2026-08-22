@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Req, UseGuards, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Req, UseGuards, Param, ParseUUIDPipe } from '@nestjs/common';
 import { PatientService } from './patient.service';
 import { JwtAuthGuard } from 'src/common/guards/jwt/jwt.guard';
 import { CreatePatientDto } from 'src/dto/create-patient.dto';
@@ -22,7 +22,7 @@ export class PatientController {
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  getPatientById(@Param('id') id: string) {
-    return this.patientService.findById(id);
+  getPatientById(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {
+    return this.patientService.findOne(id);
   }
 }

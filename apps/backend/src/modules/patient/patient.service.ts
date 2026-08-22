@@ -26,7 +26,7 @@ export class PatientService {
     });
   }
 
-  async findById(id: string) {
+  async findOne(id: string) {
     return this.patientRepo.findOne({
       where: { id },
     });

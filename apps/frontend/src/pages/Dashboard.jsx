@@ -1,10 +1,27 @@
+import { useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Users, Calendar, IndianRupee, Zap, ArrowUpRight } from "lucide-react";
+import {
+  Users,
+  Calendar,
+  IndianRupee,
+  Zap,
+  ArrowUpRight,
+  ArrowDownRight,
+} from "lucide-react";
 import { Link } from "react-router-dom";
-import { useSelector } from "react-redux"
-// import { authSlice } from '../apiHandler/authApiHandler/authSlice'
+import { useSelector, useDispatch } from "react-redux";
+import { fetchAppointments } from "../apiHandler/authApiHandler/appointmentSlice";
+import { fetchProfile } from "../apiHandler/authApiHandler/doctorSlice";
 
-const AnalyticsCard = ({ title, value, icon: Icon, trend, color, delay }) => (
+const AnalyticsCard = ({
+  title,
+  value,
+  icon: Icon,
+  trend,
+  isPositive,
+  color,
+  delay,
+}) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -18,8 +35,15 @@ const AnalyticsCard = ({ title, value, icon: Icon, trend, color, delay }) => (
       >
         <Icon size={24} />
       </div>
-      <div className="flex items-center gap-1 text-green-500 text-xs font-black bg-green-500/10 px-2 py-1 rounded-lg">
-        {trend} <ArrowUpRight size={14} />
+      <div
+        className={`flex items-center gap-1 text-xs font-black px-2 py-1 rounded-lg ${
+          isPositive
+            ? "text-green-500 bg-green-500/10"
+            : "text-red-500 bg-red-500/10"
+        }`}
+      >
+        {trend}{" "}
+        {isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
       </div>
     </div>
 
@@ -33,38 +57,123 @@ const AnalyticsCard = ({ title, value, icon: Icon, trend, color, delay }) => (
 );
 
 export default function DashboardHome() {
-  const stats = [
-    {
-      title: "Today's Total Patients",
-      value: "1,284",
-      icon: Users,
-      trend: "+12%",
-      color: { bg: "bg-blue-500", text: "text-blue-600" },
-    },
-    {
-      title: "Today's Appointments",
-      value: "18",
-      icon: Calendar,
-      trend: "+4%",
-      color: { bg: "bg-purple-500", text: "text-purple-600" },
-    },
-    {
-      title: "Revenue (Today)",
-      value: "₹42.5k",
-      icon: IndianRupee,
-      trend: "+18%",
-      color: { bg: "bg-green-500", text: "text-green-600" },
-    },
-    {
-      title: "Bot Efficiency",
-      value: "94%",
-      icon: Zap,
-      trend: "+2%",
-      color: { bg: "bg-orange-500", text: "text-orange-600" },
-    },
-  ];
+  const dispatch = useDispatch();
 
-  const user = useSelector((state) => state.auth.user);
+  const { user } = useSelector((state) => state.auth || {});
+  const { profile: doctorProfile } = useSelector(
+    (state) => state.doctors || {}
+  );
+  const { items: appointments } = useSelector(
+    (state) => state.appointments || { items: [] }
+  );
+
+  // Fetch doctor profile and all appointments on initial mount
+  useEffect(() => {
+    if (user?.id) {
+      dispatch(fetchProfile(user.id));
+      dispatch(fetchAppointments({ date: "all" }));
+    }
+  }, [dispatch, user?.id]);
+
+  // Compute dynamic stats & percentage trends (Revenue calculated ONLY for COMPLETED appointments)
+  const calculatedStats = useMemo(() => {
+    const todayStr = new Date().toDateString();
+
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = yesterdayDate.toDateString();
+
+    // 1. Filter today's and yesterday's appointments
+    const todayAppts = appointments.filter(
+      (a) => new Date(a.appointment_time).toDateString() === todayStr
+    );
+    const yesterdayAppts = appointments.filter(
+      (a) => new Date(a.appointment_time).toDateString() === yesterdayStr
+    );
+
+    // 2. Count Unique Patients for Today & Yesterday
+    const todayPatientsCount = new Set(
+      todayAppts.map((a) => a.patient_id || a.patient_phone)
+    ).size;
+    const yesterdayPatientsCount = new Set(
+      yesterdayAppts.map((a) => a.patient_id || a.patient_phone)
+    ).size;
+
+    // 3. REVENUE LOGIC: Only count appointments with status === "COMPLETED"
+    const doctorFee = Number(doctorProfile?.fees) || 500;
+
+    const todayCompletedAppts = todayAppts.filter(
+      (a) => a.status === "COMPLETED"
+    );
+    const yesterdayCompletedAppts = yesterdayAppts.filter(
+      (a) => a.status === "COMPLETED"
+    );
+
+    const todayRevenue = todayCompletedAppts.length * doctorFee;
+    const yesterdayRevenue = yesterdayCompletedAppts.length * doctorFee;
+
+    // Helper to calculate percentage growth/decay (+/- %)
+    const getTrend = (current, previous) => {
+      if (previous === 0) {
+        return {
+          trend: current > 0 ? "+100%" : "0%",
+          isPositive: true,
+        };
+      }
+      const percent = Math.round(((current - previous) / previous) * 100);
+      return {
+        trend: `${percent >= 0 ? "+" : ""}${percent}%`,
+        isPositive: percent >= 0,
+      };
+    };
+
+    const patientTrend = getTrend(todayPatientsCount, yesterdayPatientsCount);
+    const apptTrend = getTrend(todayAppts.length, yesterdayAppts.length);
+    const revenueTrend = getTrend(todayRevenue, yesterdayRevenue);
+
+    // Format revenue display (e.g. ₹42.5k or ₹500)
+    const formatRevenue = (amount) => {
+      if (amount >= 1000) {
+        return `₹${(amount / 1000).toFixed(1)}k`;
+      }
+      return `₹${amount}`;
+    };
+
+    return [
+      {
+        title: "Today's Total Patients",
+        value: todayPatientsCount.toLocaleString(),
+        icon: Users,
+        trend: patientTrend.trend,
+        isPositive: patientTrend.isPositive,
+        color: { bg: "bg-blue-500", text: "text-blue-600" },
+      },
+      {
+        title: "Today's Appointments",
+        value: todayAppts.length.toString(),
+        icon: Calendar,
+        trend: apptTrend.trend,
+        isPositive: apptTrend.isPositive,
+        color: { bg: "bg-purple-500", text: "text-purple-600" },
+      },
+      {
+        title: "Revenue (Today)",
+        value: formatRevenue(todayRevenue),
+        icon: IndianRupee,
+        trend: revenueTrend.trend,
+        isPositive: revenueTrend.isPositive,
+        color: { bg: "bg-green-500", text: "text-green-600" },
+      },
+      {
+        title: "Bot Efficiency",
+        value: "94%",
+        icon: Zap,
+        trend: "+2%",
+        isPositive: true,
+        color: { bg: "bg-orange-500", text: "text-orange-600" },
+      },
+    ];
+  }, [appointments, doctorProfile]);
 
   return (
     <div className="space-y-12">
@@ -73,7 +182,9 @@ export default function DashboardHome() {
         <div>
           <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">
             Welcome back,{" "}
-            <span className="text-blue-600">{user?.name || "Doctor"}</span>
+            <span className="text-blue-600">
+              Dr. {doctorProfile?.name || user?.name || "Doctor"}
+            </span>
           </h1>
           <p className="text-gray-500 font-medium mt-2">
             Here is what's happening in your clinic today.
@@ -96,18 +207,17 @@ export default function DashboardHome() {
 
       {/* Analytics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, i) => (
+        {calculatedStats.map((stat, i) => (
           <AnalyticsCard key={i} {...stat} delay={i * 0.1} />
         ))}
       </div>
 
-      {/* Secondary Row: Simple Chart Placeholder & Recent Activity */}
+      {/* Secondary Row: Chart & Upgrade Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 p-10 bg-white dark:bg-gray-900 rounded-[3rem] border border-gray-100 dark:border-white/5 shadow-2xl">
           <h3 className="text-xl font-black text-gray-900 dark:text-white mb-6">
             Patient Inflow
           </h3>
-          {/* This is where your Chart will go in Phase 2 */}
           <div className="h-64 w-full bg-gray-50 dark:bg-white/5 rounded-[2rem] border-2 border-dashed border-gray-200 dark:border-white/10 flex items-center justify-center">
             <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">
               Analytics Chart Coming Soon
@@ -123,7 +233,7 @@ export default function DashboardHome() {
           </p>
           <Link
             to="upgrade"
-            className="w-full py-4 px-10 cursor-pointer bg-white text-blue-600 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-50 transition-colors"
+            className="w-full py-4 px-10 cursor-pointer bg-white text-blue-600 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-50 transition-colors inline-block text-center"
           >
             View Plans
           </Link>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Mail,
   Phone,
@@ -13,6 +14,7 @@ import {
   Save,
   Loader2,
   IndianRupee,
+  AlertCircle,
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -34,11 +36,72 @@ interface DoctorProfile {
   avatar_url?: string;
 }
 
+// Translates technical or backend error messages into clear, friendly text
+const getFriendlyErrorMessage = (err: any) => {
+  if (!err)
+    return "We couldn't save your profile changes. Please double-check your information and try again.";
+
+  let rawText = "";
+  if (typeof err === "string") {
+    rawText = err;
+  } else if (Array.isArray(err)) {
+    rawText = err.join(" ");
+  } else if (typeof err === "object") {
+    const candidate =
+      err.message ||
+      err.data?.message ||
+      err.response?.data?.message ||
+      err.error;
+    if (Array.isArray(candidate)) {
+      rawText = candidate.join(" ");
+    } else if (typeof candidate === "string") {
+      rawText = candidate;
+    } else {
+      rawText = JSON.stringify(err);
+    }
+  }
+
+  const cleanMsg = String(rawText).toLowerCase();
+
+  if (
+    cleanMsg.includes("file") ||
+    cleanMsg.includes("image") ||
+    cleanMsg.includes("size") ||
+    cleanMsg.includes("large")
+  ) {
+    return "The selected image file is too large or unsupported. Please choose a JPG, PNG, or WEBP image under 2MB.";
+  }
+  if (cleanMsg.includes("phone") || cleanMsg.includes("number")) {
+    return "Please enter a valid phone number so patients and clinic staff can reach you.";
+  }
+  if (
+    cleanMsg.includes("network") ||
+    cleanMsg.includes("fetch") ||
+    cleanMsg.includes("connect")
+  ) {
+    return "Unable to connect to the server. Please check your internet connection and try again.";
+  }
+  if (cleanMsg.includes("500") || cleanMsg.includes("server")) {
+    return "Our system experienced a temporary hiccup while saving. Please wait a moment and try again.";
+  }
+
+  if (
+    typeof rawText === "string" &&
+    rawText.length > 0 &&
+    rawText.length < 120 &&
+    !rawText.includes("{")
+  ) {
+    return rawText;
+  }
+
+  return "We couldn't save your profile changes right now. Please verify your details and try again.";
+};
+
 const Profile = () => {
   const dispatch = useDispatch<any>();
 
   // Redux Selectors with defensive fallbacks
-  const { profile, loading, updating } = useSelector(
+  const { profile, loading, updating, error } = useSelector(
     (state: any) => state.doctors || {}
   );
   const { user } = useSelector((state: any) => state.auth || {});
@@ -48,6 +111,7 @@ const Profile = () => {
   const [formData, setFormData] = useState<Partial<DoctorProfile>>({});
   const [avatarPreview, setAvatarPreview] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   // Safe Doctor ID retrieval
   const currentDoctorId = user?.id || localStorage.getItem("doctorId");
@@ -65,6 +129,7 @@ const Profile = () => {
       setFormData({ ...profile });
       setAvatarPreview(profile.avatar_url || "");
       setSelectedFile(null);
+      setLocalError(null);
     }
     setIsEditOpen(true);
   };
@@ -73,6 +138,7 @@ const Profile = () => {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
+    setLocalError(null);
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -82,21 +148,34 @@ const Profile = () => {
 
   // Avatar Image Selection Handler
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalError(null);
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setLocalError(
+          "Selected profile picture is larger than 2MB. Please select a smaller image."
+        );
+        return;
+      }
       const imageUrl = URL.createObjectURL(file);
       setSelectedFile(file);
       setAvatarPreview(imageUrl);
     }
   };
 
-  // Submit Profile Updates to Backend (Sends FormData for Cloudinary Upload)
+  // Submit Profile Updates to Backend
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const targetId = profile?.id || currentDoctorId;
-    if (!targetId) return;
+    setLocalError(null);
 
-    // Build FormData payload
+    const targetId = profile?.id || currentDoctorId;
+    if (!targetId) {
+      setLocalError(
+        "Unable to locate your account profile. Please re-login and try again."
+      );
+      return;
+    }
+
     const data = new FormData();
     if (selectedFile) {
       data.append("file", selectedFile);
@@ -117,7 +196,7 @@ const Profile = () => {
       setIsEditOpen(false);
       setSelectedFile(null);
     } else {
-      alert("Failed to update profile details.");
+      setLocalError(getFriendlyErrorMessage(resultAction.payload || error));
     }
   };
 
@@ -143,7 +222,6 @@ const Profile = () => {
           </p>
         </div>
 
-        {/* Action Button: Opens Update Modal */}
         <button
           onClick={handleOpenEdit}
           className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-blue-600/25 active:scale-95 cursor-pointer"
@@ -263,7 +341,7 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Styled Theme Modal Dialog with Sidebar Offset */}
+      {/* Styled Theme Modal Dialog */}
       {isEditOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:pl-64 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-[#0b111e] border border-slate-800/80 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
@@ -285,6 +363,30 @@ const Profile = () => {
               onSubmit={handleSave}
               className="p-6 overflow-y-auto space-y-5 bg-[#0b111e]"
             >
+              {/* User Friendly Animated Error Banner */}
+              <AnimatePresence>
+                {(localError || error) && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-start gap-3 text-red-400 shadow-sm"
+                  >
+                    <div className="p-2 bg-red-500/20 rounded-xl shrink-0 text-red-400">
+                      <AlertCircle className="w-5 h-5" />
+                    </div>
+                    <div className="text-xs leading-relaxed">
+                      <p className="font-extrabold uppercase tracking-wider text-[10px] text-red-400 mb-0.5">
+                        Unable to Save Profile
+                      </p>
+                      <p className="font-medium text-slate-300">
+                        {localError || getFriendlyErrorMessage(error)}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Photo Upload Row */}
               <div className="flex items-center gap-4 p-3 bg-[#111927] border border-slate-800/60 rounded-2xl">
                 <div className="relative w-14 h-14 rounded-xl bg-blue-600/20 border border-blue-500/40 text-blue-400 flex items-center justify-center font-bold text-xl overflow-hidden">
