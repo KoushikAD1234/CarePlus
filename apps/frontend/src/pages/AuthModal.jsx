@@ -15,7 +15,88 @@ import {
   ShieldCheck,
   ArrowLeft,
   KeyRound,
+  AlertCircle,
 } from "lucide-react";
+
+// Robust error parser that extracts text from any Redux error format
+// Universal error string extractor & user-friendly formatter
+const getFriendlyErrorMessage = (err) => {
+  if (!err) return "Something went wrong. Please check your information and try again.";
+
+  // 1. Extract the actual text string out of complex Redux/Axios error structures
+  let rawText = "";
+
+  if (typeof err === "string") {
+    rawText = err;
+  } else if (Array.isArray(err)) {
+    rawText = err.join(" ");
+  } else if (typeof err === "object") {
+    // Check common nested locations from NestJS, Express, Axios, and Redux Toolkit
+    const candidate = err.message || err.data?.message || err.response?.data?.message || err.error;
+    
+    if (Array.isArray(candidate)) {
+      rawText = candidate.join(" ");
+    } else if (typeof candidate === "string") {
+      rawText = candidate;
+    } else if (typeof candidate === "object") {
+      rawText = JSON.stringify(candidate);
+    } else {
+      rawText = JSON.stringify(err);
+    }
+  }
+
+  const cleanMsg = String(rawText).toLowerCase();
+
+  // 2. Keyword Matching
+  if (
+    cleanMsg.includes("401") ||
+    cleanMsg.includes("invalid") ||
+    cleanMsg.includes("unauthorized") ||
+    cleanMsg.includes("wrong") ||
+    cleanMsg.includes("credentials") ||
+    cleanMsg.includes("password")
+  ) {
+    return "Incorrect email or password. Please double-check your details and try again.";
+  }
+
+  if (
+    cleanMsg.includes("already") ||
+    cleanMsg.includes("exist") ||
+    cleanMsg.includes("registered") ||
+    cleanMsg.includes("duplicate") ||
+    cleanMsg.includes("409")
+  ) {
+    return "An account with this email address already exists. Try logging in instead.";
+  }
+
+  if (
+    cleanMsg.includes("otp") ||
+    cleanMsg.includes("code") ||
+    cleanMsg.includes("expired")
+  ) {
+    return "The verification code you entered is invalid or has expired. Please check your inbox and try again.";
+  }
+
+  if (
+    cleanMsg.includes("network") ||
+    cleanMsg.includes("fetch") ||
+    cleanMsg.includes("503") ||
+    cleanMsg.includes("connect")
+  ) {
+    return "Unable to connect to our servers. Please check your internet connection and try again.";
+  }
+
+  if (cleanMsg.includes("500") || cleanMsg.includes("server")) {
+    return "We're experiencing temporary system trouble. Please try again in a few moments.";
+  }
+
+  // 3. Fallback: If it's a short string (like a custom validation error from backend), show it directly
+  if (typeof rawText === "string" && rawText.length > 0 && rawText.length < 120 && !rawText.includes("{")) {
+    return rawText;
+  }
+
+  return "Please check the information you entered and try again.";
+};
 
 export default function AuthModal({ isOpen, onClose }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -25,7 +106,7 @@ export default function AuthModal({ isOpen, onClose }) {
   const [regSuccess, setRegSuccess] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
-  // Extended initial state matching backend Doctor entity and SignupDto
+  // Form state
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -57,7 +138,6 @@ export default function AuthModal({ isOpen, onClose }) {
       dispatch(loginUser({ email: form.email, password: form.password }));
     } else {
       wasRegistrationAttempted.current = true;
-      // Dispatch full payload matching backend SignupDto
       dispatch(
         registerUser({
           name: form.name,
@@ -224,7 +304,7 @@ export default function AuthModal({ isOpen, onClose }) {
                     <X size={20} />
                   </button>
 
-                  <div className="text-center mb-8">
+                  <div className="text-center mb-6">
                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-full mb-4 border border-blue-100 dark:border-blue-800/30">
                       <ShieldCheck size={14} className="text-blue-600" />
                       <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">
@@ -242,6 +322,34 @@ export default function AuthModal({ isOpen, onClose }) {
                         : "New Doctor Registration"}
                     </p>
                   </div>
+
+                  {/* --- CUSTOMIZED USER-FRIENDLY ERROR BANNER --- */}
+                  <AnimatePresence>
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                        className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 flex items-start gap-3 text-red-700 dark:text-red-300 shadow-sm"
+                      >
+                        <div className="p-2 bg-red-100 dark:bg-red-500/20 rounded-xl shrink-0 text-red-600 dark:text-red-400">
+                          <AlertCircle size={18} />
+                        </div>
+                        <div className="text-xs leading-relaxed">
+                          <p className="font-extrabold uppercase tracking-wider text-[10px] text-red-600 dark:text-red-400 mb-0.5">
+                            {isForgotPassword
+                              ? "Reset Issue"
+                              : isLogin
+                              ? "Sign-In Problem"
+                              : "Registration Notice"}
+                          </p>
+                          <p className="font-medium text-gray-700 dark:text-gray-300">
+                            {getFriendlyErrorMessage(error)}
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   <form className="space-y-4" onSubmit={handleSubmit}>
                     {/* --- REGISTRATION SPECIFIC FIELDS --- */}
@@ -383,7 +491,7 @@ export default function AuthModal({ isOpen, onClose }) {
                       disabled={loading}
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
-                      className="w-full bg-blue-600 text-white font-black text-xs uppercase tracking-widest py-4.5 rounded-2xl shadow-xl shadow-blue-600/30 mt-6 flex items-center justify-center gap-3 cursor-pointer"
+                      className="w-full bg-blue-600 text-white font-black text-xs uppercase tracking-widest py-4.5 rounded-2xl shadow-xl shadow-blue-600/30 mt-6 flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50"
                     >
                       {loading ? (
                         <Loader2 className="animate-spin" size={18} />
