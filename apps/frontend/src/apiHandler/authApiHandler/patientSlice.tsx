@@ -15,14 +15,27 @@ export const createPatient = createAsyncThunk(
 );
 
 // GET PATIENT BY PHONE
-export const getPatientByPhone = createAsyncThunk(
-  "patients/getByPhone",
-  async (phone, thunkAPI) => {
+// export const getPatientByPhone = createAsyncThunk(
+//   "patients/getByPhone",
+//   async (phone, thunkAPI) => {
+//     try {
+//       const res = await api.get(`/patients?phone=${phone}`);
+//       return res.data;
+//     } catch (err) {
+//       return thunkAPI.rejectWithValue(err.response?.data);
+//     }
+//   }
+// );
+
+// GET Patient by patient_id
+export const getPatientById = createAsyncThunk(
+  "patients/getPatientById",
+  async (patientId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`/patients?phone=${phone}`);
-      return res.data;
-    } catch (err) {
-      return thunkAPI.rejectWithValue(err.response?.data);
+      const response = await api.get(`/patients/${patientId}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Failed to fetch patient");
     }
   }
 );
@@ -57,16 +70,30 @@ const patientSlice = createSlice({
       })
 
       // GET PATIENT BY PHONE
-      .addCase(getPatientByPhone.pending, (state) => {
+      // .addCase(getPatientByPhone.pending, (state) => {
+      //   state.loading = true;
+      // })
+      // .addCase(getPatientByPhone.fulfilled, (state, action) => {
+      //   state.loading = false;
+
+      //   // backend returns array
+      //   state.patient = action.payload?.[0] || null;
+      // })
+      // .addCase(getPatientByPhone.rejected, (state, action) => {
+      //   state.loading = false;
+      //   state.error = action.payload;
+      // });
+
+      .addCase(getPatientById.pending, (state) => {
         state.loading = true;
       })
-      .addCase(getPatientByPhone.fulfilled, (state, action) => {
+      .addCase(getPatientById.fulfilled, (state, action) => {
         state.loading = false;
 
         // backend returns array
         state.patient = action.payload?.[0] || null;
       })
-      .addCase(getPatientByPhone.rejected, (state, action) => {
+      .addCase(getPatientById.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

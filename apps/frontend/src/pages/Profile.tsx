@@ -35,21 +35,22 @@ interface DoctorProfile {
 }
 
 const Profile = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<any>();
 
-  // Redux Selectors
+  // Redux Selectors with defensive fallbacks
   const { profile, loading, updating } = useSelector(
-    (state) => state.doctors || {}
+    (state: any) => state.doctors || {}
   );
-  const { user } = useSelector((state) => state.auth );
+  const { user } = useSelector((state: any) => state.auth || {});
 
   // Modal & Edit Form States
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<DoctorProfile>>({});
   const [avatarPreview, setAvatarPreview] = useState<string>("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // Retrieve Active Doctor ID from Auth store or localStorage
-  const currentDoctorId = user.id;
+  // Safe Doctor ID retrieval
+  const currentDoctorId = user?.id || localStorage.getItem("doctorId");
 
   // Fetch Doctor Profile on Mount if missing
   useEffect(() => {
@@ -63,6 +64,7 @@ const Profile = () => {
     if (profile) {
       setFormData({ ...profile });
       setAvatarPreview(profile.avatar_url || "");
+      setSelectedFile(null);
     }
     setIsEditOpen(true);
   };
@@ -78,28 +80,42 @@ const Profile = () => {
     }));
   };
 
-  // Avatar Image Selection Preview Handler
+  // Avatar Image Selection Handler
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const imageUrl = URL.createObjectURL(file);
+      setSelectedFile(file);
       setAvatarPreview(imageUrl);
-      setFormData((prev) => ({ ...prev, avatar_url: imageUrl }));
     }
   };
 
-  // Submit Profile Updates to Backend
+  // Submit Profile Updates to Backend (Sends FormData for Cloudinary Upload)
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const targetId = profile?.id || currentDoctorId;
     if (!targetId) return;
 
+    // Build FormData payload
+    const data = new FormData();
+    if (selectedFile) {
+      data.append("file", selectedFile);
+    }
+
+    Object.keys(formData).forEach((key) => {
+      const val = (formData as any)[key];
+      if (val !== undefined && val !== null) {
+        data.append(key, val.toString());
+      }
+    });
+
     const resultAction = await dispatch(
-      updateProfile({ id: targetId, body: formData })
+      updateProfile({ id: targetId, body: data })
     );
 
     if (updateProfile.fulfilled.match(resultAction)) {
       setIsEditOpen(false);
+      setSelectedFile(null);
     } else {
       alert("Failed to update profile details.");
     }

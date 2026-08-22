@@ -1,11 +1,8 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle,
   Clock,
-  User,
-  Phone,
-  MessageSquare,
   Search,
   ChevronLeft,
   ChevronRight,
@@ -26,8 +23,9 @@ import {
 import PatientDetailsModal from "../components/PatientDetailsModal";
 import {
   createPatient,
-  getPatientByPhone,
+  getPatientById,
 } from "../apiHandler/authApiHandler/patientSlice";
+import { fetchProfile } from "../apiHandler/authApiHandler/doctorSlice"; // Added Doctor Profile Thunk
 import { jsPDF } from "jspdf";
 
 export default function Appointments() {
@@ -47,7 +45,17 @@ export default function Appointments() {
   const { items: appointments, loading } = useSelector(
     (state) => state.appointments
   );
-  const { user } = useSelector((state) => state.auth);
+  const { user } = useSelector((state) => state.auth || {});
+  const { profile: doctorProfile } = useSelector(
+    (state) => state.doctors || {}
+  );
+
+  // Fetch Doctor Profile on initial load
+  useEffect(() => {
+    if (user?.id) {
+      dispatch(fetchProfile(user.id));
+    }
+  }, [dispatch, user?.id]);
 
   useEffect(() => {
     if (searchQuery) {
@@ -104,7 +112,7 @@ export default function Appointments() {
 
       let patientId;
       const existingPatient = await dispatch(
-        getPatientByPhone(newPatient.phone)
+        getPatientById(newPatient.patient_id)
       ).unwrap();
 
       if (existingPatient?.id) {
@@ -149,315 +157,262 @@ export default function Appointments() {
     console.log("Updated data ready for API:", updatedData);
   };
 
-  const handlePrescription = (appt) => {
-    setPrescriptionAppt(appt);
+  // Fetch full patient data before opening prescription modal
+  const handlePrescription = async (appt) => {
     setPrescriptionText("");
     setIsPrescriptionOpen(true);
+
+    let fullPatient = null;
+    if (appt?.patient_phone) {
+      try {
+        fullPatient = await dispatch(
+          getPatientById(appt.patient_id)
+        ).unwrap();
+      } catch (err) {
+        console.warn("Patient details fetch fallback:", err);
+      }
+    }
+
+    setPrescriptionAppt({
+      ...appt,
+      patient_age: fullPatient?.age || appt?.age || "",
+      patient_gender: fullPatient?.gender || appt?.gender || "",
+      patient_address: fullPatient?.address || appt?.address || "",
+    });
   };
 
-  // // Generate Clean Prescription PDF
-  // const generatePDF = () => {
-  //   if (!prescriptionAppt) return;
-  //   const doc = new jsPDF();
-
-  //   const patientName = prescriptionAppt.patient_name || "N/A";
-  //   const patientPhone = prescriptionAppt.patient_phone || "N/A";
-  //   const appointmentDate = prescriptionAppt.appointment_time
-  //     ? new Date(prescriptionAppt.appointment_time).toLocaleDateString()
-  //     : new Date().toLocaleDateString();
-  //   const appointmentTime = prescriptionAppt.appointment_time
-  //     ? new Date(prescriptionAppt.appointment_time).toLocaleTimeString([], {
-  //         hour: "2-digit",
-  //         minute: "2-digit",
-  //       })
-  //     : "N/A";
-
-  //   // --- Background Tint & Top Line ---
-  //   doc.setFillColor(250, 251, 253);
-  //   doc.rect(0, 0, 210, 297, "F");
-
-  //   doc.setFillColor(37, 99, 235); // CarePlus Accent Blue
-  //   doc.rect(0, 0, 210, 4, "F");
-
-  //   // --- Primary Doctor Header (Left Side) ---
-  //   doc.setTextColor(15, 23, 42);
-  //   doc.setFont("helvetica", "bold");
-  //   doc.setFontSize(22);
-  //   doc.text(`Dr. ${user?.name || "Koushik Chakraborty"}`, 14, 22);
-
-  //   doc.setFontSize(9.5);
-  //   doc.setFont("helvetica", "normal");
-  //   doc.setTextColor(100, 116, 139);
-  //   doc.text("General Physician & Specialist", 14, 28);
-  //   doc.text(`Prescription Date: ${appointmentDate}`, 14, 34);
-
-  //   // --- Powered by CarePlus Branding (Top Right) ---
-  //   doc.setFontSize(7.5);
-  //   doc.setFont("helvetica", "bold");
-  //   doc.setTextColor(148, 163, 184);
-  //   doc.text("POWERED BY", 196, 19, { align: "right" });
-
-  //   doc.setFontSize(14);
-  //   doc.setFont("helvetica", "bold");
-  //   doc.setTextColor(37, 99, 235);
-  //   doc.text("CarePlus", 196, 25, { align: "right" });
-
-  //   doc.setFontSize(7.5);
-  //   doc.setFont("helvetica", "normal");
-  //   doc.setTextColor(148, 163, 184);
-  //   doc.text("Provider Portal v1.0", 196, 30, { align: "right" });
-
-  //   // Header Divider Line
-  //   doc.setDrawColor(226, 232, 240);
-  //   doc.setLineWidth(0.5);
-  //   doc.line(14, 39, 196, 39);
-
-  //   // --- Patient Details Card ---
-  //   doc.setFillColor(255, 255, 255);
-  //   doc.roundedRect(14, 44, 182, 24, 3, 3, "FD");
-  //   doc.setDrawColor(226, 232, 240);
-
-  //   // Patient Column 1
-  //   doc.setTextColor(100, 116, 139);
-  //   doc.setFontSize(8);
-  //   doc.setFont("helvetica", "bold");
-  //   doc.text("PATIENT NAME", 20, 52);
-  //   doc.setTextColor(15, 23, 42);
-  //   doc.setFontSize(10);
-  //   doc.text(patientName, 20, 60);
-
-  //   // Patient Column 2
-  //   doc.setTextColor(100, 116, 139);
-  //   doc.setFontSize(8);
-  //   doc.text("PHONE NUMBER", 85, 52);
-  //   doc.setTextColor(15, 23, 42);
-  //   doc.setFontSize(10);
-  //   doc.text(patientPhone, 85, 60);
-
-  //   // Patient Column 3
-  //   doc.setTextColor(100, 116, 139);
-  //   doc.setFontSize(8);
-  //   doc.text("TIME / TYPE", 145, 52);
-  //   doc.setTextColor(15, 23, 42);
-  //   doc.setFontSize(10);
-  //   doc.text(
-  //     `${appointmentTime} (${prescriptionAppt.type || "Visit"})`,
-  //     145,
-  //     60
-  //   );
-
-  //   // --- Small Rx Symbol & Divider Line ---
-  //   doc.setTextColor(37, 99, 235);
-  //   doc.setFont("helvetica", "bold");
-  //   doc.setFontSize(16); // Small Rx size
-  //   doc.text("Rx", 14, 80);
-
-  //   doc.setDrawColor(37, 99, 235);
-  //   doc.setLineWidth(0.6);
-  //   doc.line(14, 84, 196, 84); // Divider line right under Rx
-
-  //   // --- Main Prescription & Advice Text Area ---
-  //   doc.setTextColor(30, 41, 59);
-  //   doc.setFont("helvetica", "normal");
-  //   doc.setFontSize(10);
-
-  //   const notesText = prescriptionText || "No notes or medicines written.";
-  //   const splitNotes = doc.splitTextToSize(notesText, 182);
-
-  //   // Renders the doctor's free-form notes directly below the line
-  //   doc.text(splitNotes, 14, 94);
-
-  //   // --- Clean Footer ---
-  //   const footerY = 280;
-  //   doc.setDrawColor(226, 232, 240);
-  //   doc.setLineWidth(0.4);
-  //   doc.line(14, footerY, 196, footerY);
-
-  //   doc.setFontSize(7.5);
-  //   doc.setTextColor(148, 163, 184);
-  //   doc.text(
-  //     "Electronically generated prescription issued via CarePlus Provider Portal.",
-  //     14,
-  //     footerY + 5
-  //   );
-  //   doc.text(
-  //     `Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString(
-  //       [],
-  //       { hour: "2-digit", minute: "2-digit" }
-  //     )}`,
-  //     196,
-  //     footerY + 5,
-  //     { align: "right" }
-  //   );
-
-  //   // Download PDF
-  //   doc.save(`Prescription_${patientName.replace(/\s+/g, "_")}.pdf`);
-  // };
-
-  // Generate Styled Prescription PDF
+  // Generate PDF
   const generatePDF = () => {
     if (!prescriptionAppt) return;
     const doc = new jsPDF();
+    console.log("Value of user name ", user?.name);
+    console.log("Value of doctor name ", doctorProfile?.name);
 
-    const patientName = prescriptionAppt.patient_name || "N/A";
-    const patientPhone = prescriptionAppt.patient_phone || "N/A";
-    const appointmentDate = prescriptionAppt.appointment_time
-      ? new Date(prescriptionAppt.appointment_time).toLocaleDateString()
-      : new Date().toLocaleDateString();
-    const appointmentTime = prescriptionAppt.appointment_time
-      ? new Date(prescriptionAppt.appointment_time).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "N/A";
+    console.log("Value of user Qualification ", user?.qualification);
+    console.log("Value of doctor Qualification ", doctorProfile?.qualification);
 
-    // --- Page Background Tint ---
-    doc.setFillColor(250, 252, 255);
+    // Doctor Details Resolution
+    const dName = doctorProfile?.name || user?.name || "Name";
+    const dQual = doctorProfile?.qualification || "Qualification";
+    const dSpec = doctorProfile?.specialization || "Specialization";
+    const dReg = doctorProfile?.registration_number || "Registration Number";
+    // const dClinic = doctorProfile?.clinic_name || "CarePlus Medical Center";
+    const dAddress =
+      doctorProfile?.address ||
+      "Address";
+    const dPhone = doctorProfile?.phone || "Contact Number";
+    const dEmail = doctorProfile?.email || "Email id";
+
+    // console.log("Value of prescriptionAPPT ", prescriptionAppt);
+
+    // Patient Details Resolution
+    const pName = prescriptionAppt.patient_name || "N/A";
+    const pPhone = prescriptionAppt.patient_phone || "N/A";
+    const pAge = prescriptionAppt.patient_age || "";
+    const pGender = prescriptionAppt.patient_gender || "";
+    const pAddress = prescriptionAppt.patient_address || "N/A";
+
+    const dateStr = new Date().toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    // 1. Background Fill
+    doc.setFillColor(252, 253, 255);
     doc.rect(0, 0, 210, 297, "F");
 
-    // --- Dual-Tone Top Accent Bar ---
-    doc.setFillColor(37, 99, 235); // CarePlus Blue
-    doc.rect(0, 0, 140, 5, "F");
-    doc.setFillColor(99, 102, 241); // Indigo Gradient Accent
-    doc.rect(140, 0, 70, 5, "F");
+    // Top Dual Accent Bar
+    doc.setFillColor(37, 99, 235);
+    doc.rect(0, 0, 130, 4, "F");
+    doc.setFillColor(99, 102, 241);
+    doc.rect(130, 0, 80, 4, "F");
 
-    // --- Doctor Header Info (Left) ---
+    // 2. Doctor Details Header
     doc.setTextColor(15, 23, 42);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.text(`Dr. ${user?.name || "Koushik Chakraborty"}`, 14, 24);
+    doc.setFontSize(16);
+    doc.text(`Dr. ${dName}`, 14, 16);
 
-    doc.setFontSize(9.5);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 116, 139);
-    doc.text("General Physician & Clinical Specialist", 14, 30);
-    doc.text(`Date: ${appointmentDate}`, 14, 36);
-
-    // --- Powered by CarePlus Badge (Top Right) ---
-    doc.setFillColor(239, 246, 255);
-    doc.roundedRect(142, 14, 54, 24, 3, 3, "F");
-    doc.setDrawColor(219, 234, 254);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(142, 14, 54, 24, 3, 3, "D");
-
-    doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(148, 163, 184);
-    doc.text("POWERED BY", 169, 20, { align: "center" });
+    doc.setFontSize(9.5);
+    doc.setTextColor(37, 99, 235);
 
-    doc.setFontSize(13);
+    const wrappedQual = doc.splitTextToSize(dQual, 122);
+    doc.text(wrappedQual, 14, 21.5);
+
+    let currentY = 21.5 + wrappedQual.length * 4;
+
+    doc.setFontSize(8.5);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(37, 99, 235);
-    doc.text("CarePlus", 169, 27, { align: "center" });
+    doc.text(`${dSpec} | Reg. No: ${dReg}`, 14, currentY + 1.5);
 
-    doc.setFontSize(6.5);
+    doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 116, 139);
-    doc.text("Provider Portal v1.0", 169, 33, { align: "center" });
 
-    // Subtle Header Separator Line
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.5);
-    doc.line(14, 43, 196, 43);
+    const fullClinicLine = `${dAddress}`;
+    const wrappedClinicLine = doc.splitTextToSize(fullClinicLine, 122);
+    doc.text(wrappedClinicLine, 14, currentY + 5.5);
 
-    // --- Modern Patient Floating Bar ---
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(14, 49, 182, 26, 4, 4, "F");
+    let contactY = currentY + 5.5 + wrappedClinicLine.length * 3.5;
+    doc.text(`Contact: ${dPhone} | Email: ${dEmail}`, 14, contactY);
+
+    // 3. Top Right Branding Box
+    doc.setFillColor(240, 246, 255);
+    doc.roundedRect(142, 10, 54, 25, 3, 3, "F");
+    doc.setDrawColor(219, 234, 254);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(142, 10, 54, 25, 3, 3, "D");
+
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(148, 163, 184);
+    doc.text("POWERED BY", 169, 15, { align: "center" });
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(37, 99, 235);
+    doc.text("CarePlus", 169, 22, { align: "center" });
+
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139);
+    doc.text("Provider Portal v1.0", 169, 28, { align: "center" });
+
+    const dividerY = Math.max(contactY + 5, 40);
     doc.setDrawColor(226, 232, 240);
     doc.setLineWidth(0.4);
-    doc.roundedRect(14, 49, 182, 26, 4, 4, "D");
+    doc.line(14, dividerY, 196, dividerY);
 
-    // Side Color Marker Tag
+    // 4. Expanded Patient Info Card
+    const cardY = dividerY + 4;
+    const cardHeight = 28;
+
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(14, cardY, 182, cardHeight, 3.5, 3.5, "F");
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(14, cardY, 182, cardHeight, 3.5, 3.5, "D");
+
     doc.setFillColor(37, 99, 235);
-    doc.roundedRect(14, 49, 3, 26, 1.5, 1.5, "F");
+    doc.roundedRect(14, cardY, 2.5, cardHeight, 1, 1, "F");
 
-    // Patient Column 1
+    // Col 1: Name
     doc.setTextColor(148, 163, 184);
-    doc.setFontSize(7.5);
+    doc.setFontSize(6.5);
     doc.setFont("helvetica", "bold");
-    doc.text("PATIENT NAME", 24, 58);
+    doc.text("PATIENT NAME", 20, cardY + 7);
     doc.setTextColor(15, 23, 42);
-    doc.setFontSize(10);
-    doc.text(patientName, 24, 66);
+    doc.setFontSize(9);
+    doc.text(pName, 20, cardY + 13);
 
-    // Patient Column 2
+    // Col 2: Phone
     doc.setTextColor(148, 163, 184);
-    doc.setFontSize(7.5);
+    doc.setFontSize(6.5);
     doc.setFont("helvetica", "bold");
-    doc.text("PHONE NUMBER", 88, 58);
+    doc.text("PHONE NUMBER", 68, cardY + 7);
     doc.setTextColor(15, 23, 42);
-    doc.setFontSize(10);
-    doc.text(patientPhone, 88, 66);
+    doc.setFontSize(9);
+    doc.text(pPhone, 68, cardY + 13);
 
-    // Patient Column 3
+    // Col 3: Age
     doc.setTextColor(148, 163, 184);
-    doc.setFontSize(7.5);
+    doc.setFontSize(6.5);
     doc.setFont("helvetica", "bold");
-    doc.text("TIME / VISIT TYPE", 148, 58);
+    doc.text("AGE", 110, cardY + 7);
     doc.setTextColor(15, 23, 42);
-    doc.setFontSize(10);
-    doc.text(
-      `${appointmentTime} (${prescriptionAppt.type || "Visit"})`,
-      148,
-      66
-    );
+    doc.setFontSize(9);
+    doc.text(pAge ? `${pAge} Yrs` : "N/A", 110, cardY + 13);
 
-    // --- Rx Symbol Header ---
+    // Col 4: Gender
+    doc.setTextColor(148, 163, 184);
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "bold");
+    doc.text("GENDER", 135, cardY + 7);
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(9);
+    doc.text(pGender || "N/A", 135, cardY + 13);
+
+    // Col 5: Date
+    doc.setTextColor(148, 163, 184);
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "bold");
+    doc.text("PRESCRIPTION DATE", 160, cardY + 7);
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(9);
+    doc.text(dateStr, 160, cardY + 13);
+
+    doc.setDrawColor(241, 245, 249);
+    doc.setLineWidth(0.3);
+    doc.line(20, cardY + 17, 190, cardY + 17);
+
+    // Row 2: Address
+    doc.setTextColor(148, 163, 184);
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "bold");
+    doc.text("ADDRESS:", 20, cardY + 23);
+
+    doc.setTextColor(71, 85, 105);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text(pAddress, 36, cardY + 23);
+
+    // 5. Rx Symbol Header
+    const rxY = cardY + cardHeight + 6;
     doc.setFillColor(37, 99, 235);
-    doc.roundedRect(14, 84, 12, 12, 2, 2, "F");
+    doc.roundedRect(14, rxY, 11, 10, 2, 2, "F");
 
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text("Rx", 20, 91.5, { align: "center" });
+    doc.setFontSize(10);
+    doc.text("Rx", 19.5, rxY + 7, { align: "center" });
 
-    // Rx Section Accent Divider Line
     doc.setDrawColor(37, 99, 235);
-    doc.setLineWidth(0.8);
-    doc.line(30, 90, 196, 90);
+    doc.setLineWidth(0.7);
+    doc.line(27, rxY + 5, 196, rxY + 5);
 
-    // --- Prescription Body Container ---
+    // 6. Medication Body Container
+    const bodyY = rxY + 13;
+    const bodyHeight = 175;
+
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(14, 102, 182, 160, 4, 4, "F");
+    doc.roundedRect(14, bodyY, 182, bodyHeight, 4, 4, "F");
     doc.setDrawColor(241, 245, 249);
     doc.setLineWidth(0.4);
-    doc.roundedRect(14, 102, 182, 160, 4, 4, "D");
+    doc.roundedRect(14, bodyY, 182, bodyHeight, 4, 4, "D");
 
-    // Prescription / Advice Text
     doc.setTextColor(30, 41, 59);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
+    doc.setFontSize(9.5);
 
     const notesText =
       prescriptionText || "No prescriptions or medical advice written.";
-    const splitNotes = doc.splitTextToSize(notesText, 172);
-    doc.text(splitNotes, 19, 112);
+    const splitText = doc.splitTextToSize(notesText, 172);
+    let printY = bodyY + 10;
 
-    // --- Minimal Footer ---
-    const footerY = 278;
+    splitText.forEach((line) => {
+      doc.text(line, 20, printY);
+      printY += 6;
+    });
+
+    // 7. Footer Bar
+    const footerY = 282;
     doc.setDrawColor(226, 232, 240);
     doc.setLineWidth(0.4);
     doc.line(14, footerY, 196, footerY);
 
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(148, 163, 184);
     doc.text(
-      "Electronically generated prescription issued via CarePlus Provider Portal.",
+      `Issued electronically by Dr. ${dName} via CarePlus Provider Portal.`,
       14,
-      footerY + 6
+      footerY + 5
     );
-    doc.text(
-      `Issued: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString(
-        [],
-        { hour: "2-digit", minute: "2-digit" }
-      )}`,
-      196,
-      footerY + 6,
-      { align: "right" }
-    );
+    doc.text(`Generated: ${dateStr}`, 196, footerY + 5, { align: "right" });
 
-    // Save File
-    doc.save(`Prescription_${patientName.replace(/\s+/g, "_")}.pdf`);
+    doc.save(`Prescription_${pName.replace(/\s+/g, "_")}.pdf`);
   };
 
   // Send WhatsApp Prescription via NestJS API
@@ -481,7 +436,11 @@ export default function Appointments() {
             appointmentId: prescriptionAppt?.id,
             patientPhone: prescriptionAppt?.patient_phone,
             patientName: prescriptionAppt?.patient_name,
-            doctorName: user?.name || "Koushik Chakraborty",
+            patientAge: prescriptionAppt?.patient_age,
+            patientGender: prescriptionAppt?.patient_gender,
+            patientAddress: prescriptionAppt?.patient_address,
+            doctorName:
+              doctorProfile?.name || user?.name || "Koushik Chakraborty",
             prescriptionText: prescriptionText,
           }),
         }
@@ -509,7 +468,7 @@ export default function Appointments() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* UI Render Code */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
@@ -523,13 +482,12 @@ export default function Appointments() {
         </div>
         <button
           onClick={() => setIsWalkInOpen(true)}
-          className="px-6 py-3 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all"
+          className="px-6 py-3 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all cursor-pointer"
         >
           + New Walk-in
         </button>
       </div>
 
-      {/* Control Bar */}
       <div className="p-4 bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-white/5 shadow-xl flex flex-col lg:flex-row gap-4 justify-between">
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 lg:pb-0">
           {["Yesterday", "Today", "Tomorrow"].map((f) => (
@@ -539,7 +497,7 @@ export default function Appointments() {
                 setActiveFilter(f.toLowerCase());
                 setCurrentPage(1);
               }}
-              className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${
                 activeFilter === f.toLowerCase()
                   ? "bg-blue-600 text-white"
                   : "text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5"
@@ -568,13 +526,11 @@ export default function Appointments() {
         </div>
       </div>
 
-      {/* Table Container */}
       <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-gray-50 dark:border-white/5">
-                {/* Serial Number Header */}
                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-gray-400 w-16">
                   S.No
                 </th>
@@ -609,7 +565,6 @@ export default function Appointments() {
                     animate={{ opacity: 1 }}
                     className="hover:bg-blue-50/30 dark:hover:bg-blue-900/5 transition-colors group"
                   >
-                    {/* Serial Number Cell */}
                     <td className="px-8 py-6">
                       <span className="text-xs font-black text-gray-400">
                         {((currentPage - 1) * itemsPerPage + (index + 1))
@@ -703,7 +658,6 @@ export default function Appointments() {
           </table>
         </div>
 
-        {/* Pagination Footer */}
         <div className="px-8 py-6 bg-gray-50/50 dark:bg-black/20 border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
           <p className="text-xs font-bold text-gray-500">
             Showing{" "}
@@ -722,14 +676,14 @@ export default function Appointments() {
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="p-2 rounded-lg border border-gray-200 dark:border-white/10 disabled:opacity-30 dark:text-white"
+              className="p-2 rounded-lg border border-gray-200 dark:border-white/10 disabled:opacity-30 dark:text-white cursor-pointer"
             >
               <ChevronLeft size={18} />
             </button>
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages || totalPages === 0}
-              className="p-2 rounded-lg border border-gray-200 dark:border-white/10 disabled:opacity-30 dark:text-white"
+              className="p-2 rounded-lg border border-gray-200 dark:border-white/10 disabled:opacity-30 dark:text-white cursor-pointer"
             >
               <ChevronRight size={18} />
             </button>
@@ -737,7 +691,6 @@ export default function Appointments() {
         </div>
       </div>
 
-      {/* Prescription Modal */}
       <AnimatePresence>
         {isPrescriptionOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:pl-64 bg-black/50 backdrop-blur-sm">
@@ -747,7 +700,6 @@ export default function Appointments() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-3xl p-6 shadow-2xl border border-gray-100 dark:border-white/10 space-y-5"
             >
-              {/* Header */}
               <div className="flex justify-between items-center border-b border-gray-100 dark:border-white/10 pb-4">
                 <div>
                   <h2 className="text-xl font-black text-gray-900 dark:text-white">
@@ -766,7 +718,6 @@ export default function Appointments() {
                 </button>
               </div>
 
-              {/* Clinical Notes & RX Details */}
               <div>
                 <label className="block text-[10px] font-black uppercase text-gray-400 mb-2">
                   Clinical Notes & Prescribed Medications
@@ -780,7 +731,6 @@ export default function Appointments() {
                 />
               </div>
 
-              {/* Actions Bar */}
               <div className="flex items-center justify-between pt-2">
                 <button
                   type="button"
@@ -801,9 +751,10 @@ export default function Appointments() {
                   <button
                     type="button"
                     onClick={handleSendPrescription}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all cursor-pointer"
+                    disabled={isSending}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all cursor-pointer disabled:opacity-50"
                   >
-                    <Send size={14} /> Send
+                    <Send size={14} /> {isSending ? "Sending..." : "Send"}
                   </button>
                 </div>
               </div>

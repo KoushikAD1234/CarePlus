@@ -5,10 +5,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Appointment } from 'src/database/entities/appointment.entity';
 import { WhatsappModule } from '../whatsapp/whatsapp.module';
 import { CloudinaryModule } from 'src/common/cloudinary/cloudinary.module';
+import { Doctor } from 'src/database/entities/doctor.entity';
+import { Patient } from 'src/database/entities/patient.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Appointment]),
+    TypeOrmModule.forFeature([Appointment, Doctor, Patient]),
     WhatsappModule,
     CloudinaryModule,
   ],

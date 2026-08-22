@@ -1,4 +1,5 @@
-import { IsEmail, IsString, MinLength, IsPhoneNumber, IsNumber } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsPhoneNumber, IsNumber, IsOptional } from 'class-validator';
+import { Type } from 'class-transformer';
 
 // DTO: stands for data transfer object.
 // simple class that defines the "shape" of the data being sent over the network
@@ -26,8 +27,10 @@ export class SignupDto {
   @IsString()
   address: string;
 
+  @IsOptional()
+  @Type(() => Number)
   @IsNumber()
-  fees: number;
+  fees?: number;
 
   @MinLength(4)
   password: string;

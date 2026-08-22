@@ -1,4 +1,13 @@
-import { Controller, Get, Param, Body, Put } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Body,
+  Put,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import * as QRCode from 'qrcode';
 import { DoctorService } from './doctor.service';
 import { UpdateDoctorProfileDto } from 'src/dto/update-doctor-profile.dto';
@@ -28,7 +37,12 @@ export class DoctorController {
   }
 
   @Put(':id')
-  updateProfile(@Param('id') id: string, @Body() body: UpdateDoctorProfileDto) {
-    return this.doctorService.updateProfile(id, body);
+  @UseInterceptors(FileInterceptor('file')) // Expects key 'file' in FormData
+  updateProfile(
+    @Param('id') id: string,
+    @Body() body: UpdateDoctorProfileDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    return this.doctorService.updateProfile(id, body, file);
   }
 }
