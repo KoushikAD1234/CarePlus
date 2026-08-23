@@ -2,6 +2,8 @@ import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 export enum ConversationStep {
   START = 'START',
+  WELCOME = 'WELCOME',
+  WELCOME_BACK = 'WELCOME_BACK',
   ASK_NAME = 'ASK_NAME',
   ASK_AGE = 'ASK_AGE',
   ASK_ADDRESS = 'ASK_ADDRESS',
@@ -51,4 +53,7 @@ export class Conversation {
 
   @Column({ nullable: true })
   appointment_date: string;
+
+  @Column({ nullable: true })
+  patient_id: string;
 }

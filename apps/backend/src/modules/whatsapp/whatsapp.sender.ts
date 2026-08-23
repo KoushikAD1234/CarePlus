@@ -82,6 +82,52 @@ export class WhatsappSender {
     }
   }
 
+  async sendContent(
+    to: string,
+    contentSid: string,
+    variables?: Record<string, string>,
+  ) {
+    const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+
+    const formattedFrom = process.env.TWILIO_WHATSAPP_NUMBER?.startsWith(
+      'whatsapp:',
+    )
+      ? process.env.TWILIO_WHATSAPP_NUMBER
+      : `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`;
+
+    const params = new URLSearchParams({
+      From: formattedFrom!,
+      To: formattedTo,
+      ContentSid: contentSid,
+    });
+
+    if (variables) {
+      params.append('ContentVariables', JSON.stringify(variables));
+    }
+
+    try {
+      const response = await axios.post(this.url, params, {
+        auth: this.auth,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+
+      console.log(
+        `✅ Content sent to ${formattedTo}. SID: ${response.data.sid}`,
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error(
+        '❌ Content API Error:',
+        error?.response?.data || error.message,
+      );
+
+      throw error;
+    }
+  }
+
   /**
    * Sends the interactive Doctor List using the Content API SID.
    * Maps database doctor objects to the {{1}}, {{1id}} placeholders.
