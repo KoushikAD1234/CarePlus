@@ -12,7 +12,7 @@ import { SignupDto } from '../../dto/signup.dto';
 import { LoginDto } from '../../dto/login.dto';
 import { ForgotPasswordDto } from 'src/dto/forgot-password.dto';
 import { ResetPasswordDto } from 'src/dto/reset-passwprd.dto';
-import { randomInt } from 'crypto';
+import { randomInt, randomBytes } from 'crypto';
 import { MailService } from '../mail/mail.service';
 @Injectable()
 export class AuthService {
@@ -26,6 +26,7 @@ export class AuthService {
   async hashPassword(password: string): Promise<string> {
     return await bcrypt.hash(password, 10);
   }
+
   async comparePassword(
     bodyPassword: string,
     userPassword: string,
@@ -43,6 +44,7 @@ export class AuthService {
     }
 
     const hashedPassword = await this.hashPassword(body.password);
+    const bookingCode = randomBytes(4).toString('hex');
 
     const doctor = this.doctorRepo.create({
       name: body.name,
@@ -55,6 +57,7 @@ export class AuthService {
       address: body.address,
       password: hashedPassword,
       clinic_id: 'default-clinic',
+      booking_code: bookingCode,
     });
 
     const saved = await this.doctorRepo.save(doctor);

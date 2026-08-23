@@ -55,4 +55,7 @@ export class Doctor {
 
   @UpdateDateColumn()
   updated_at: Date;
+
+  @Column({ unique: true })
+  booking_code: string;
 }

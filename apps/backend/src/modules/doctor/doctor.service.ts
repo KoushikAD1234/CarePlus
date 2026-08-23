@@ -63,4 +63,27 @@ export class DoctorService {
 
     return this.doctorRepo.save(doctor);
   }
+
+  async bookDoctor(booking_code: string) {
+    const doctor = await this.doctorRepo.findOne({
+      where: { booking_code },
+    });
+
+    if (!doctor) {
+      throw new NotFoundException('Doctor not found');
+    }
+
+    return {
+      id: doctor.id,
+      name: doctor.name,
+      booking_code: doctor.booking_code,
+      avatar_url: doctor.avatar_url,
+      fees: doctor.fees,
+      qualification: doctor.qualification,
+      specialzation: doctor.specialization,
+      address: doctor.address,
+      registration_number: doctor.registration_number,
+      // add other PUBLIC profile fields
+    };
+  }
 }

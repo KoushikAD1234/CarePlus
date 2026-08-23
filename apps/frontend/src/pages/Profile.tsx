@@ -20,6 +20,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   fetchProfile,
   updateProfile,
+  fetchBookingQR
 } from "../apiHandler/authApiHandler/doctorSlice";
 
 interface DoctorProfile {
@@ -101,9 +102,16 @@ const Profile = () => {
   const dispatch = useDispatch<any>();
 
   // Redux Selectors with defensive fallbacks
-  const { profile, loading, updating, error } = useSelector(
-    (state: any) => state.doctors || {}
-  );
+  const {
+    profile,
+    loading,
+    updating,
+    error,
+    bookingLink,
+    bookingQr,
+    bookingCode,
+    qrLoading,
+  } = useSelector((state: any) => state.doctors || {});
   const { user } = useSelector((state: any) => state.auth || {});
 
   // Modal & Edit Form States
@@ -122,6 +130,12 @@ const Profile = () => {
       dispatch(fetchProfile(currentDoctorId));
     }
   }, [dispatch, currentDoctorId, profile]);
+
+  useEffect(() => {
+    if (currentDoctorId) {
+      dispatch(fetchBookingQR(currentDoctorId));
+    }
+  }, [dispatch, currentDoctorId]);
 
   // Open Edit Modal and sync local form state
   const handleOpenEdit = () => {
@@ -253,6 +267,92 @@ const Profile = () => {
             <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-blue-400 uppercase">
               <Stethoscope className="w-3.5 h-3.5" />
               <span>{profile?.specialization || "General Physician"}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* WhatsApp Booking */}
+        <div className="p-6 bg-[#090d16] border border-slate-800/60 rounded-2xl">
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            {/* QR */}
+            <div className="shrink-0">
+              {qrLoading ? (
+                <div className="w-40 h-40 flex items-center justify-center bg-slate-900 rounded-2xl">
+                  <Loader2 className="w-7 h-7 text-blue-500 animate-spin" />
+                </div>
+              ) : bookingQr ? (
+                <div className="p-3 bg-white rounded-2xl">
+                  <img
+                    src={bookingQr}
+                    alt="WhatsApp Booking QR Code"
+                    className="w-36 h-36"
+                  />
+                </div>
+              ) : (
+                <div className="w-40 h-40 flex items-center justify-center bg-slate-900 rounded-2xl text-slate-500 text-xs text-center">
+                  QR unavailable
+                </div>
+              )}
+            </div>
+
+            {/* Information */}
+            <div className="flex-1 space-y-3">
+              <div>
+                <h3 className="text-lg font-bold text-white">
+                  WhatsApp Appointment Booking
+                </h3>
+
+                <p className="text-sm text-slate-400 mt-1">
+                  Let patients book appointments with you directly through
+                  WhatsApp.
+                </p>
+              </div>
+
+              {bookingLink && (
+                <>
+                  <div className="p-3 bg-[#111927] border border-slate-800 rounded-xl">
+                    <p className="text-xs text-slate-500 mb-1">
+                      Your booking link
+                    </p>
+
+                    <p className="text-sm text-blue-400 break-all">
+                      {bookingLink}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    {/* Open WhatsApp */}
+                    <a
+                      href={bookingLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-xl text-sm font-semibold transition-colors"
+                    >
+                      Open WhatsApp
+                    </a>
+
+                    {/* Copy Link */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(bookingLink);
+                      }}
+                      className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition-colors"
+                    >
+                      Copy Booking Link
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {bookingCode && (
+                <p className="text-xs text-slate-500">
+                  Booking code:{" "}
+                  <span className="text-slate-300 font-mono">
+                    {bookingCode}
+                  </span>
+                </p>
+              )}
             </div>
           </div>
         </div>
